@@ -369,6 +369,27 @@ Deleting `config.yml` or `messages.yml` and restarting regenerates defaults from
 
 This plugin includes [bStats](https://bstats.org/) for anonymous usage statistics (plugin ID: **32277**). No player data is sent through bStats.
 
+### 📜 License & Usage Rules
+
+This project is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)** license. 
+
+Here is a simple breakdown of what that means for you:
+
+#### ✅ What you ARE allowed to do:
+* **Use & Run:** You can download, run, and use this code for personal or private use.
+* **Modify & Edit:** You can tweak, change, edit, or completely rewrite the code to fit your needs.
+* **Share & Remix:** You can share the original code or your modified versions with others publicly.
+
+#### ❌ What you ARE NOT allowed to do:
+* **No Commercial Use:** You absolutely cannot make money from this code, any modified versions of it, or any service/product that directly hosts or uses it. 
+
+#### ⚠️ Conditions you MUST follow if you share or publish it:
+* **Attribution (BY):** You must give appropriate credit to the original creator, provide a link to the original repository, and indicate if any changes were made.
+* **ShareAlike (SA):** If you remix, transform, or build upon this code and publish it, you **must** distribute your contributions under this exact same `CC BY-NC-SA 4.0` license. You cannot make your version closed-source or change the rules.
+
+---
+*For the full legal details, you can read the [Official CC BY-NC-SA 4.0 Legal Code](https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.en).*
+
 ---
 
 *Questions or feedback? Join [Normal Survival on Discord](https://discord.normalsurvival.com).*
