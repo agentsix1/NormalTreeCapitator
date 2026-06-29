@@ -1,0 +1,43 @@
+name: NormalTreeCapitator
+version: '${project.version}'
+main: dev.normaltreecapitator.NormalTreeCapitator
+api-version: '1.20'
+description: Cut down whole trees at once for Paper, Folia, Spigot, and Bukkit.
+authors: [Agentsix1, Cristichi]
+folia-supported: true
+
+commands:
+  tc:
+    description: Tree Capitator controls
+    usage: /tc help
+    aliases: [treecapitator, treecap]
+
+permissions:
+  normaltreecapitator.*:
+    description: Gives access to all NormalTreeCapitator commands.
+    default: op
+    children:
+      normaltreecapitator.admin: true
+      normaltreecapitator.use: true
+      normaltreecapitator.toggle: true
+      normaltreecapitator.toggle.others: true
+      normaltreecapitator.reload: true
+      normaltreecapitator.help: true
+  normaltreecapitator.use:
+    description: Allows tree capitator
+    default: true
+  normaltreecapitator.toggle:
+    description: Toggle tree capitator for yourself
+    default: true
+  normaltreecapitator.toggle.others:
+    description: Toggle tree capitator for other players
+    default: false
+  normaltreecapitator.reload:
+    description: Reload config files
+    default: false
+  normaltreecapitator.admin:
+    description: Break protected replanted saplings
+    default: false
+  normaltreecapitator.help:
+    description: View tree capitator help
+    default: true

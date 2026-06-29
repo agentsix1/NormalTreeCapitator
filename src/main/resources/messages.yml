@@ -1,0 +1,25 @@
+# NormalTreeCapitator — customizable messages
+# Reload with /tc reload
+
+prefix: "&9[NormalTreeCapitator]&f "
+
+usage: "&cUsage: &6/{label} {usage}"
+unknown-subcommand: "&cUnknown subcommand. Use &6/{label} help&c."
+no-permission-toggle-others: "&cYou do not have permission to toggle other players."
+player-not-found: "&cPlayer not found: &6{player}"
+toggle-self: "{feature} {state}"
+toggle-other-sender: "{feature} {state} for &6{target}&f."
+toggle-other-target: "{feature} was {state} by &6{sender}&f."
+only-players: "&cOnly players can toggle for themselves."
+no-permission: "&cYou do not have permission to use this command."
+no-permission-reload: "&cYou do not have permission to reload."
+reload-success: "&aConfig files reloaded."
+help-header: "&6/{label} help&f — show this message"
+help-toggle: "&6/{label} toggle&f — toggle {feature}"
+help-toggle-player: "&6/{label} toggle <player>&f — toggle for another player"
+help-reload: "&6/{label} reload&f — reload config files"
+sapling-protected: "&cThis replanted sapling is protected."
+feature-treecapitator: "Tree Capitator"
+state-enabled: "&aenabled"
+state-disabled: "&cdisabled"
+feature-tree-capitator: "tree capitator"

@@ -1,0 +1,156 @@
+# NormalTreeCapitator — tree capitator settings
+# By Agentsix1 and Cristichi
+# Discord: https://discord.normalsurvival.com
+# Reload with /tc reload
+# Blocks/tools accept OAK_LOG, oak_log, or minecraft:oak_log
+# Unknown block names on older server versions are skipped with a warning at load time.
+
+defaults:
+  enabled: true
+
+settings:
+  max-chain: 1000
+  search-radius: 1
+  must-sneak: true
+  need-tool: true
+  damage-tool: true
+  break-tool: true
+  replant: false
+  invincible-replant: false
+  async-start: 100
+  blocks-per-tick: 100
+
+# ---------------------------------------------------------------------------
+# Groups — add as many custom sections as you want
+# ---------------------------------------------------------------------------
+# Each entry under "groups:" is its own tree-cap rule set. The name is only a
+# label for you (e.g. Trees, Mushrooms, CustomOres); it is not shown in-game.
+#
+# When a player breaks a block listed in a group, connected blocks in that
+# same group are broken together (flood-fill). Blocks in different groups
+# never chain into each other.
+#
+# Required per group:
+#   blocks  — list of block IDs (see formats below)
+#   tools   — items that trigger capitator for this group (usually axes)
+#
+# Optional per group (falls back to "settings" above if omitted):
+#   max-chain      — max blocks broken in one chain (-1 = unlimited)
+#   search-radius  — how far to look for the next connected block (1–5)
+#
+# Block name formats (all work):
+#   minecraft:oak_log
+#   oak_log
+#   OAK_LOG
+#
+# Example — copy this template and change the name, blocks, and tools:
+#
+#   MyCustomGroup:
+#     max-chain: 250
+#     search-radius: 1
+#     blocks:
+#       - minecraft:bamboo_block
+#       - minecraft:bamboo
+#     tools:
+#       - minecraft:iron_axe
+#       - minecraft:diamond_axe
+#
+# After editing, run /tc reload (or restart the server).
+# Unknown block names on older Minecraft versions are skipped with a warning.
+# ---------------------------------------------------------------------------
+
+groups:
+  Trees:
+    # Optional overrides for this group only (remove to use global "settings"):
+    # max-chain: 1000
+    # search-radius: 1
+    blocks:
+      # Overworld logs
+      - minecraft:oak_log
+      - minecraft:spruce_log
+      - minecraft:birch_log
+      - minecraft:jungle_log
+      - minecraft:acacia_log
+      - minecraft:dark_oak_log
+      - minecraft:mangrove_log
+      - minecraft:cherry_log
+      - minecraft:pale_oak_log
+      # Stripped overworld logs
+      - minecraft:stripped_oak_log
+      - minecraft:stripped_spruce_log
+      - minecraft:stripped_birch_log
+      - minecraft:stripped_jungle_log
+      - minecraft:stripped_acacia_log
+      - minecraft:stripped_dark_oak_log
+      - minecraft:stripped_mangrove_log
+      - minecraft:stripped_cherry_log
+      - minecraft:stripped_pale_oak_log
+      # Overworld wood (all-bark faces)
+      - minecraft:oak_wood
+      - minecraft:spruce_wood
+      - minecraft:birch_wood
+      - minecraft:jungle_wood
+      - minecraft:acacia_wood
+      - minecraft:dark_oak_wood
+      - minecraft:mangrove_wood
+      - minecraft:cherry_wood
+      - minecraft:pale_oak_wood
+      # Stripped overworld wood
+      - minecraft:stripped_oak_wood
+      - minecraft:stripped_spruce_wood
+      - minecraft:stripped_birch_wood
+      - minecraft:stripped_jungle_wood
+      - minecraft:stripped_acacia_wood
+      - minecraft:stripped_dark_oak_wood
+      - minecraft:stripped_mangrove_wood
+      - minecraft:stripped_cherry_wood
+      - minecraft:stripped_pale_oak_wood
+      # Nether stems
+      - minecraft:crimson_stem
+      - minecraft:warped_stem
+      - minecraft:stripped_crimson_stem
+      - minecraft:stripped_warped_stem
+      # Nether hyphae
+      - minecraft:crimson_hyphae
+      - minecraft:warped_hyphae
+      - minecraft:stripped_crimson_hyphae
+      - minecraft:stripped_warped_hyphae
+      # Overworld leaves
+      - minecraft:oak_leaves
+      - minecraft:spruce_leaves
+      - minecraft:birch_leaves
+      - minecraft:jungle_leaves
+      - minecraft:acacia_leaves
+      - minecraft:dark_oak_leaves
+      - minecraft:mangrove_leaves
+      - minecraft:cherry_leaves
+      - minecraft:pale_oak_leaves
+      # Azalea leaves
+      - minecraft:azalea_leaves
+      - minecraft:flowering_azalea_leaves
+      # Nether tree foliage / glow
+      - minecraft:nether_wart_block
+      - minecraft:warped_wart_block
+      - minecraft:shroomlight
+    tools:
+      - minecraft:wooden_axe
+      - minecraft:stone_axe
+      - minecraft:iron_axe
+      - minecraft:golden_axe
+      - minecraft:diamond_axe
+      - minecraft:netherite_axe
+  Other:
+    # Huge mushrooms — separate group so they do not chain with normal trees.
+    # Duplicate the "Other:" block above to add more custom groups.
+    blocks:
+      # Huge mushroom caps and stems
+      - minecraft:mushroom_stem
+      - minecraft:brown_mushroom_block
+      - minecraft:red_mushroom_block
+    tools:
+      - minecraft:wooden_axe
+      - minecraft:stone_axe
+      - minecraft:iron_axe
+      - minecraft:golden_axe
+      - minecraft:diamond_axe
+      - minecraft:netherite_axe
