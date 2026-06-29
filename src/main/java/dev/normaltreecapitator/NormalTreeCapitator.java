@@ -7,6 +7,7 @@ import dev.normaltreecapitator.messages.PluginMessages;
 import dev.normaltreecapitator.playerdata.PlayerDataStore;
 import dev.normaltreecapitator.scheduler.PluginScheduler;
 import dev.normaltreecapitator.session.BreakSession;
+import dev.normaltreecapitator.update.UpdateNotifier;
 import dev.normaltreecapitator.util.ServerPlatform;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.command.PluginCommand;
@@ -21,6 +22,7 @@ public final class NormalTreeCapitator extends JavaPlugin {
     private PlayerDataStore playerData;
     private TreeCapitatorConfig config;
     private BreakSession sessions;
+    private UpdateNotifier updateNotifier;
 
     @Override
     public void onEnable() {
@@ -38,6 +40,9 @@ public final class NormalTreeCapitator extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new TreeCapitatorListener(this), this);
         registerCommand("tc", new TreeCapitatorCommand(this));
+
+        updateNotifier = new UpdateNotifier(this);
+        updateNotifier.start();
 
         int pluginId = 32277;
         new Metrics(this, pluginId);

@@ -3,6 +3,7 @@ package dev.normaltreecapitator.scheduler;
 import dev.normaltreecapitator.util.ServerPlatform;
 import io.papermc.paper.threadedregions.scheduler.AsyncScheduler;
 import io.papermc.paper.threadedregions.scheduler.EntityScheduler;
+import io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler;
 import io.papermc.paper.threadedregions.scheduler.RegionScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -16,6 +17,7 @@ public final class PluginScheduler {
 
     private final JavaPlugin plugin;
     private final boolean paperSchedulers;
+    private GlobalRegionScheduler global;
     private RegionScheduler region;
     private AsyncScheduler async;
 
@@ -24,10 +26,27 @@ public final class PluginScheduler {
         boolean paper = ServerPlatform.isPaper();
         if (paper) {
             var server = plugin.getServer();
+            this.global = server.getGlobalRegionScheduler();
             this.region = server.getRegionScheduler();
             this.async = server.getAsyncScheduler();
         }
         this.paperSchedulers = paper;
+    }
+
+    public void runGlobal(Runnable task) {
+        if (paperSchedulers) {
+            global.run(plugin, t -> task.run());
+        } else {
+            Bukkit.getScheduler().runTask(plugin, task);
+        }
+    }
+
+    public void runGlobalRepeating(Runnable task, long periodTicks) {
+        if (paperSchedulers) {
+            global.runAtFixedRate(plugin, t -> task.run(), periodTicks, periodTicks);
+        } else {
+            Bukkit.getScheduler().runTaskTimer(plugin, task, periodTicks, periodTicks);
+        }
     }
 
     public void runAtLocation(Location location, Runnable task) {

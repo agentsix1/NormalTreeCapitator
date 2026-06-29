@@ -1,5 +1,5 @@
 name: NormalTreeCapitator
-version: '${project.version}'
+version: '${project.version} Build ${buildNumber}'
 main: dev.normaltreecapitator.NormalTreeCapitator
 api-version: '1.20'
 description: Cut down whole trees at once for Paper, Folia, Spigot, and Bukkit.
