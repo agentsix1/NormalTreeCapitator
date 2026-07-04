@@ -1,7 +1,6 @@
 package dev.normaltreecapitator.util;
 
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -28,6 +27,20 @@ public final class ToolHelper {
         return meta != null && meta.isUnbreakable();
     }
 
+    public static int remainingDurabilityPoints(ItemStack tool) {
+        if (tool == null || tool.getType().isAir() || isUnbreakable(tool)) {
+            return Integer.MAX_VALUE;
+        }
+        if (!(tool.getItemMeta() instanceof Damageable damageable)) {
+            return Integer.MAX_VALUE;
+        }
+        int max = tool.getType().getMaxDurability();
+        if (max <= 0) {
+            return Integer.MAX_VALUE;
+        }
+        return Math.max(0, max - damageable.getDamage());
+    }
+
     public static boolean axeUsable(ItemStack tool, boolean axeNeeded, boolean breakAxe) {
         if (!axeNeeded) {
             return true;
@@ -44,11 +57,18 @@ public final class ToolHelper {
         return true;
     }
 
-    /**
-     * @return true if the tool should stop breaking further blocks
-     */
-    public static boolean damageTool(Player player, ItemStack tool, boolean enabled, boolean breakAxe) {
-        if (!enabled || tool == null || tool.getType().isAir() || isUnbreakable(tool)) {
+    public static boolean damageTool(Player player, ItemStack tool, boolean enabled, boolean breakTool) {
+        return damageTool(player, tool, enabled, breakTool, 1);
+    }
+
+    public static boolean damageTool(
+            Player player,
+            ItemStack tool,
+            boolean enabled,
+            boolean breakTool,
+            int amount
+    ) {
+        if (!enabled || amount <= 0 || tool == null || tool.getType().isAir() || isUnbreakable(tool)) {
             return false;
         }
         if (!(tool.getItemMeta() instanceof Damageable damageable)) {
@@ -60,18 +80,22 @@ public final class ToolHelper {
         }
 
         Random random = ThreadLocalRandom.current();
-        Enchantment unbreakingEnchant = Enchantment.getByKey(NamespacedKey.minecraft("unbreaking"));
-        int unbreaking = unbreakingEnchant != null ? tool.getEnchantmentLevel(unbreakingEnchant) : 0;
-        if (random.nextInt(unbreaking + 1) != 0) {
-            return damageable.getDamage() >= max - 1;
+        int unbreaking = tool.getEnchantmentLevel(Enchantment.UNBREAKING);
+        int damage = damageable.getDamage();
+        for (int i = 0; i < amount; i++) {
+            if (unbreaking > 0 && random.nextInt(unbreaking + 1) != 0) {
+                continue;
+            }
+            damage++;
+            if (damage >= max) {
+                break;
+            }
         }
-
-        int damage = damageable.getDamage() + 1;
-        damageable.setDamage(damage);
+        damageable.setDamage(Math.min(damage, max));
         tool.setItemMeta(damageable);
 
-        if (damage >= max) {
-            if (breakAxe) {
+        if (damageable.getDamage() >= max) {
+            if (breakTool) {
                 tool.setAmount(0);
             } else {
                 damageable.setDamage(max - 1);

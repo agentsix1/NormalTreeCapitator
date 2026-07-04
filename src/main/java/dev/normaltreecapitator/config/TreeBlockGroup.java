@@ -48,6 +48,10 @@ public final class TreeBlockGroup {
         return searchRadius;
     }
 
+    public boolean matchesBlock(Material material) {
+        return blocks.contains(material);
+    }
+
     public boolean allowsTool(Material material) {
         return tools.isEmpty() || tools.contains(material);
     }

@@ -30,15 +30,21 @@ public final class TreeCapitatorConfig {
     private boolean needTool = true;
     private boolean damageTool = true;
     private boolean breakTool = false;
+    private boolean mergeItemDrops = true;
+    private int cooldownTicks = 0;
     private boolean replant = true;
     private boolean invincibleReplant = false;
+    private boolean replantConsumeSaplings = true;
+    private boolean debug = false;
     private int asyncStart = 150;
     private int blocksPerTick = 100;
+    private int asyncDelay = 1;
 
     private List<TreeBlockGroup> groups = List.of();
     private Map<Material, TreeBlockGroup> blockToGroup = Map.of();
     private Set<Material> treeBlocks = EnumSet.noneOf(Material.class);
     private Set<Material> treeTools = EnumSet.noneOf(Material.class);
+    private Map<Material, Integer> blockDamages = Map.of();
 
     public TreeCapitatorConfig(NormalTreeCapitator plugin) {
         this.plugin = plugin;
@@ -75,11 +81,22 @@ public final class TreeCapitatorConfig {
             needTool = settings.getBoolean("need-tool", needTool);
             damageTool = settings.getBoolean("damage-tool", damageTool);
             breakTool = settings.getBoolean("break-tool", breakTool);
+            mergeItemDrops = settings.getBoolean("merge-item-drops", mergeItemDrops);
+            cooldownTicks = Math.max(0, settings.getInt("cooldown-ticks", cooldownTicks));
             replant = settings.getBoolean("replant", replant);
             invincibleReplant = settings.getBoolean("invincible-replant", invincibleReplant);
+            replantConsumeSaplings = settings.getBoolean("replant-consume-saplings", replantConsumeSaplings);
+            debug = settings.getBoolean("debug", debug);
             asyncStart = Math.max(1, settings.getInt("async-start", asyncStart));
             blocksPerTick = Math.max(1, settings.getInt("blocks-per-tick", blocksPerTick));
+            asyncDelay = Math.max(0, settings.getInt("async-delay", asyncDelay));
         }
+
+        ConfigurationSection damageSection = yaml.getConfigurationSection("block-damages");
+        if (damageSection == null && yaml.getDefaults() != null) {
+            damageSection = yaml.getDefaults().getConfigurationSection("block-damages");
+        }
+        blockDamages = parseBlockDamages(damageSection);
 
         groups = parseGroups(yaml.getConfigurationSection("groups"));
         rebuildCaches();
@@ -89,6 +106,35 @@ public final class TreeCapitatorConfig {
         } catch (IOException e) {
             plugin.getLogger().log(Level.WARNING, "Could not save config.yml", e);
         }
+
+        plugin.getLogger().info("[TreeCap] config " + configFile.getAbsolutePath()
+                + " must-sneak=" + mustSneak
+                + " debug=" + debug
+                + " async-start=" + asyncStart
+                + " replant=" + replant);
+    }
+
+    private Map<Material, Integer> parseBlockDamages(ConfigurationSection section) {
+        Map<Material, Integer> damages = new HashMap<>();
+        if (section == null) {
+            return Map.of();
+        }
+        for (String groupId : section.getKeys(false)) {
+            ConfigurationSection group = section.getConfigurationSection(groupId);
+            if (group == null) {
+                continue;
+            }
+            int damage = Math.max(0, group.getInt("damage", 1));
+            for (String blockName : group.getStringList("blocks")) {
+                Material material = resolveMaterial(blockName);
+                if (material == null) {
+                    plugin.getLogger().warning("Unknown block-damages." + groupId + " block: " + blockName);
+                    continue;
+                }
+                damages.put(material, damage);
+            }
+        }
+        return Map.copyOf(damages);
     }
 
     private List<TreeBlockGroup> parseGroups(ConfigurationSection section) {
@@ -221,6 +267,14 @@ public final class TreeCapitatorConfig {
         return breakTool;
     }
 
+    public boolean mergeItemDrops() {
+        return mergeItemDrops;
+    }
+
+    public int cooldownTicks() {
+        return cooldownTicks;
+    }
+
     public boolean replant() {
         return replant;
     }
@@ -229,11 +283,45 @@ public final class TreeCapitatorConfig {
         return invincibleReplant;
     }
 
+    public boolean replantConsumeSaplings() {
+        return replantConsumeSaplings;
+    }
+
+    public boolean debug() {
+        return debug;
+    }
+
     public int asyncStart() {
         return asyncStart;
     }
 
     public int blocksPerTick() {
         return blocksPerTick;
+    }
+
+    public int asyncDelay() {
+        return asyncDelay;
+    }
+
+    public int blockDamage(Material material) {
+        if (material == null) {
+            return 1;
+        }
+        Integer configured = blockDamages.get(material);
+        if (configured != null) {
+            return configured;
+        }
+        return defaultBlockDamage(material);
+    }
+
+    static int defaultBlockDamage(Material material) {
+        String name = material.name();
+        if (name.endsWith("_LEAVES")
+                || name.equals("NETHER_WART_BLOCK")
+                || name.equals("WARPED_WART_BLOCK")
+                || name.equals("SHROOMLIGHT")) {
+            return 0;
+        }
+        return 1;
     }
 }

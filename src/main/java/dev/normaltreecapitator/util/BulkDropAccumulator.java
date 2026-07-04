@@ -1,5 +1,6 @@
 package dev.normaltreecapitator.util;
 
+import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
@@ -26,8 +27,70 @@ public final class BulkDropAccumulator {
                 .toList();
     }
 
+    public synchronized boolean tryConsumeSapling(Material sapling) {
+        for (int i = 0; i < drops.size(); i++) {
+            ItemStack stack = drops.get(i);
+            if (stack.getType() != sapling || stack.getAmount() <= 0) {
+                continue;
+            }
+            if (stack.getAmount() == 1) {
+                drops.remove(i);
+            } else {
+                stack.setAmount(stack.getAmount() - 1);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public synchronized int countOf(Material material) {
+        int total = 0;
+        for (ItemStack stack : drops) {
+            if (stack.getType() == material) {
+                total += stack.getAmount();
+            }
+        }
+        return total;
+    }
+
+    public synchronized String debugSaplingCounts() {
+        StringBuilder out = new StringBuilder("drops=");
+        if (drops.isEmpty()) {
+            return out.append("[]").toString();
+        }
+        out.append('[');
+        boolean first = true;
+        for (ItemStack stack : drops) {
+            Material type = stack.getType();
+            String name = type.name();
+            if (!name.contains("SAPLING")
+                    && !name.contains("PROPAGULE")
+                    && !name.contains("FUNGUS")
+                    && !name.contains("LOG")
+                    && !name.contains("LEAVES")
+                    && !name.contains("STEM")
+                    && !name.contains("WART")
+                    && !name.contains("WOOD")) {
+                continue;
+            }
+            if (!first) {
+                out.append(", ");
+            }
+            out.append(type).append('x').append(stack.getAmount());
+            first = false;
+        }
+        if (first) {
+            out.append("no-tree-items, totalStacks=").append(drops.size());
+        }
+        return out.append(']').toString();
+    }
+
     public void incrementBlocksBroken() {
         blocksBroken.incrementAndGet();
+    }
+
+    public int blocksBroken() {
+        return blocksBroken.get();
     }
 
     private void mergeDrop(ItemStack incoming) {

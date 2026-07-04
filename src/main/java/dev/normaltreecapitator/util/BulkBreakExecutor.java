@@ -9,12 +9,14 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Breaks large tree chains in timed waves, merging all drops at the origin block.
+ * Breaks large tree chains in timed waves, merging drops at the origin when configured.
  */
 public final class BulkBreakExecutor {
 
@@ -40,17 +42,19 @@ public final class BulkBreakExecutor {
 
         plugin.getScheduler().runOnEntity(player, () -> {
             if (!player.isOnline()) {
+                TreeCapLog.info(config, plugin, player, "async chain aborted: player offline");
                 return;
             }
+
+            TreeCapLog.info(config, plugin, player,
+                    "async chain begin targets=" + targets.size()
+                            + " origin=" + TreeCapLog.blockLabel(origin, origin.getBlock().getType()));
 
             AtomicBoolean toolBroken = new AtomicBoolean(false);
-            List<BlockPosition> toBreak = applyUpfrontDurability(player, tool, config, targets, toolBroken);
-            if (toBreak.isEmpty()) {
-                return;
-            }
-
             BulkDropAccumulator accumulator = new BulkDropAccumulator();
-            AtomicInteger pending = new AtomicInteger(toBreak.size());
+            List<PendingReplant> brokenLogs = Collections.synchronizedList(new ArrayList<>());
+            AtomicInteger pending = new AtomicInteger(targets.size());
+            AtomicInteger breakSeq = new AtomicInteger();
 
             scheduleWave(
                     player,
@@ -58,41 +62,16 @@ public final class BulkBreakExecutor {
                     group,
                     config,
                     dropAt,
-                    toBreak,
+                    targets,
                     0,
                     accumulator,
+                    brokenLogs,
                     pending,
-                    toolBroken
+                    toolBroken,
+                    breakSeq,
+                    targets
             );
         });
-    }
-
-    private List<BlockPosition> applyUpfrontDurability(
-            Player player,
-            ItemStack tool,
-            TreeCapitatorConfig config,
-            List<BlockPosition> targets,
-            AtomicBoolean toolBroken
-    ) {
-        if (!config.damageTool() || ToolHelper.isUnbreakable(tool)) {
-            return targets;
-        }
-
-        int allowed = 0;
-        for (int i = 0; i < targets.size(); i++) {
-            if (ToolHelper.damageTool(player, tool, config.needTool(), config.breakTool())) {
-                toolBroken.set(true);
-                break;
-            }
-            allowed++;
-        }
-        if (allowed <= 0) {
-            return List.of();
-        }
-        if (allowed == targets.size()) {
-            return targets;
-        }
-        return List.copyOf(targets.subList(0, allowed));
     }
 
     private void scheduleWave(
@@ -104,27 +83,35 @@ public final class BulkBreakExecutor {
             List<BlockPosition> positions,
             int startIndex,
             BulkDropAccumulator accumulator,
+            List<PendingReplant> brokenLogs,
             AtomicInteger pending,
-            AtomicBoolean toolBroken
+            AtomicBoolean toolBroken,
+            AtomicInteger breakSeq,
+            List<BlockPosition> chain
     ) {
         if (startIndex >= positions.size()) {
             return;
         }
         if (toolBroken.get() || !player.isOnline()) {
             int unscheduled = positions.size() - startIndex;
+            TreeCapLog.info(config, plugin, player,
+                    "async wave abort startIndex=" + startIndex
+                            + " unscheduled=" + unscheduled
+                            + " toolBroken=" + toolBroken.get());
             if (unscheduled > 0 && pending.addAndGet(-unscheduled) == 0) {
-                finish(dropAt, accumulator);
+                finish(player, dropAt, accumulator, brokenLogs, group, config);
             }
             return;
         }
 
         int endIndex = Math.min(startIndex + config.blocksPerTick(), positions.size());
+        int total = positions.size();
 
         Runnable wave = () -> {
             if (toolBroken.get() || !player.isOnline()) {
                 int unscheduled = positions.size() - startIndex;
                 if (unscheduled > 0 && pending.addAndGet(-unscheduled) == 0) {
-                    finish(dropAt, accumulator);
+                    finish(player, dropAt, accumulator, brokenLogs, group, config);
                 }
                 return;
             }
@@ -135,11 +122,23 @@ public final class BulkBreakExecutor {
                 plugin.getScheduler().runAtLocation(location, () -> {
                     try {
                         if (!toolBroken.get() && player.isOnline()) {
-                            tryBreakBlock(player, tool, group, config, location.getBlock(), accumulator);
+                            tryBreakBlock(
+                                    player,
+                                    tool,
+                                    group,
+                                    config,
+                                    location.getBlock(),
+                                    accumulator,
+                                    brokenLogs,
+                                    breakSeq,
+                                    total,
+                                    chain,
+                                    toolBroken
+                            );
                         }
                     } finally {
                         if (pending.decrementAndGet() == 0) {
-                            finish(dropAt, accumulator);
+                            finish(player, dropAt, accumulator, brokenLogs, group, config);
                         }
                     }
                 });
@@ -155,8 +154,11 @@ public final class BulkBreakExecutor {
                         positions,
                         endIndex,
                         accumulator,
+                        brokenLogs,
                         pending,
-                        toolBroken
+                        toolBroken,
+                        breakSeq,
+                        chain
                 );
             }
         };
@@ -164,13 +166,62 @@ public final class BulkBreakExecutor {
         if (startIndex == 0) {
             wave.run();
         } else {
-            plugin.getScheduler().runAtLocationLater(dropAt, wave, 1L);
+            plugin.getScheduler().runAtLocationLater(dropAt, wave, config.asyncDelay());
         }
     }
 
-    private void finish(Location dropAt, BulkDropAccumulator accumulator) {
-        plugin.getScheduler().runAtLocation(dropAt, () ->
-                DropHelper.dropStacks(dropAt, accumulator.mergedDrops()));
+    private void finish(
+            Player player,
+            Location dropAt,
+            BulkDropAccumulator accumulator,
+            List<PendingReplant> brokenLogs,
+            TreeBlockGroup group,
+            TreeCapitatorConfig config
+    ) {
+        List<PendingReplant> stumps = config.replant()
+                ? TreeReplant.stumpsFromBrokenLogs(brokenLogs)
+                : List.of();
+        TreeCapLog.info(config, plugin, player,
+                "BREAK CHAIN DONE " + TreeCapLog.brokenLogsSummary(brokenLogs)
+                        + " " + TreeCapLog.replantSitesSummary(stumps)
+                        + " " + TreeCapLog.saplingSummary(accumulator));
+        Runnable spawnDrops = () -> plugin.getScheduler().runAtLocation(dropAt, () -> {
+            if (config.mergeItemDrops()) {
+                TreeCapLog.info(config, plugin, player,
+                        "SPAWN DROPS " + TreeCapLog.formatDrops(accumulator.mergedDrops())
+                                + " " + TreeCapLog.saplingSummary(accumulator));
+                DropHelper.dropStacks(dropAt, accumulator.mergedDrops());
+            }
+            plugin.getScheduler().runOnEntity(player, () -> {
+                if (player.isOnline()) {
+                    notifyProcessingDone(player);
+                }
+            });
+        });
+        if (config.replant() && !stumps.isEmpty()) {
+            TreeCapLog.info(config, plugin, player,
+                    "REPLANT PROCESS BEGIN consume=" + config.replantConsumeSaplings()
+                            + " " + TreeCapLog.replantSitesSummary(stumps)
+                            + " " + TreeCapLog.saplingSummary(accumulator));
+            plugin.getScheduler().runAtLocationLater(dropAt, () ->
+                    TreeReplant.applyReplantsAfterBreak(
+                            player,
+                            stumps,
+                            accumulator,
+                            config.replantConsumeSaplings(),
+                            config.invincibleReplant(),
+                            plugin,
+                            plugin.getScheduler(),
+                            config,
+                            spawnDrops
+                    ), 1L);
+        } else {
+            TreeCapLog.info(config, plugin, player,
+                    stumps.isEmpty()
+                            ? "REPLANT PROCESS SKIPPED (no stumps from broken logs)"
+                            : "REPLANT PROCESS SKIPPED (replant=false)");
+            spawnDrops.run();
+        }
     }
 
     private void tryBreakBlock(
@@ -179,26 +230,91 @@ public final class BulkBreakExecutor {
             TreeBlockGroup group,
             TreeCapitatorConfig config,
             Block target,
-            BulkDropAccumulator accumulator
+            BulkDropAccumulator accumulator,
+            List<PendingReplant> brokenLogs,
+            AtomicInteger breakSeq,
+            int total,
+            List<BlockPosition> chain,
+            AtomicBoolean toolBroken
     ) {
         Material targetType = target.getType();
-        if (!config.isTreeBlock(targetType)) {
+        Location blockLoc = target.getLocation();
+        int n = breakSeq.incrementAndGet();
+        String prefix = "BLOCK " + n + "/" + total + " ";
+        if (!group.matchesBlock(targetType)) {
+            TreeCapLog.info(config, plugin, player,
+                    prefix + "RESULT=SKIP reason=not-in-group type=" + targetType
+                            + " at " + TreeCapLog.blockLabel(blockLoc, targetType)
+                            + " expect=none "
+                            + TreeCapLog.connectedRemaining(blockLoc, chain, group::matchesBlock));
             return;
         }
-        if (!plugin.sessions().markBreaking(target.getLocation())) {
+        if (!plugin.sessions().markBreaking(blockLoc)) {
+            TreeCapLog.info(config, plugin, player,
+                    prefix + "RESULT=SKIP reason=already-marked type=" + targetType
+                            + " at " + TreeCapLog.blockLabel(blockLoc, targetType)
+                            + " expect=none "
+                            + TreeCapLog.connectedRemaining(blockLoc, chain, group::matchesBlock));
             return;
         }
         try {
-            if (config.replant() && group.isReplantableLog(targetType)
-                    && ReplantHelper.replant(target, targetType, config.invincibleReplant(), plugin)) {
-                accumulator.incrementBlocksBroken();
+            BreakProtection.BreakApproval approval = BreakProtection.checkBreak(player, target);
+            if (approval == null) {
+                TreeCapLog.info(config, plugin, player,
+                        prefix + "RESULT=SKIP reason=protected/cancelled type=" + targetType
+                                + " at " + TreeCapLog.blockLabel(blockLoc, targetType)
+                                + " expect=none "
+                                + TreeCapLog.connectedRemaining(blockLoc, chain, group::matchesBlock));
                 return;
             }
-            accumulator.addDrops(DropHelper.resolveDrops(target, tool, player));
+            if (config.damageTool() && ToolHelper.damageTool(
+                    player, tool, true, config.breakTool(), config.blockDamage(targetType)
+            )) {
+                toolBroken.set(true);
+            }
+            Material below = target.getWorld().getBlockAt(
+                    target.getX(), target.getY() - 1, target.getZ()).getType();
+            boolean replantableLog = TreeReplant.isReplantableLogType(targetType);
+            boolean plantableGround = TreeReplant.hasPlantableGround(target, targetType);
+            Material expectedSapling = TreeReplant.saplingForLog(targetType);
+            String expect;
+            if (replantableLog) {
+                brokenLogs.add(TreeReplant.recordBrokenLog(blockLoc, targetType, plantableGround));
+                if (plantableGround) {
+                    expect = "replantCandidate=YES replantAs=" + expectedSapling
+                            + " below=" + below;
+                } else {
+                    expect = "replantCandidate=NO reason=bad-ground below=" + below
+                            + " wouldReplantAs=" + expectedSapling;
+                }
+            } else {
+                expect = "replantCandidate=NO reason=not-log (leaf/other)";
+            }
+            var drops = DropHelper.resolveDrops(target, tool, player);
+            String dropText = TreeCapLog.formatDrops(drops);
+            String connected = TreeCapLog.connectedRemaining(blockLoc, chain, group::matchesBlock);
+            accumulator.addDrops(drops);
+            if (!config.mergeItemDrops()) {
+                DropHelper.spawnDrops(blockLoc, drops);
+            }
             target.setType(Material.AIR);
             accumulator.incrementBlocksBroken();
+            TreeCapLog.info(config, plugin, player,
+                    prefix + "RESULT=BROKEN type=" + targetType
+                            + " damage=" + config.blockDamage(targetType)
+                            + " at " + TreeCapLog.blockLabel(blockLoc, targetType)
+                            + " " + expect
+                            + " " + dropText
+                            + " " + connected
+                            + " " + TreeCapLog.saplingSummary(accumulator)
+                            + " logsBroken=" + brokenLogs.size());
         } finally {
-            plugin.sessions().unmarkBreaking(target.getLocation());
+            plugin.sessions().unmarkBreaking(blockLoc);
         }
+    }
+
+    private void notifyProcessingDone(Player player) {
+        plugin.messages().send(player, "processing-done",
+                java.util.Map.of("feature", "tree breaks"));
     }
 }

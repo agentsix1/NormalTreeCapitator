@@ -1,5 +1,7 @@
 package dev.normaltreecapitator.util;
 
+import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.Material;
 import org.bukkit.World;
 
@@ -10,6 +12,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
+/**
+ * Flood-fill for tree capitator groups. On Folia, only loaded chunks owned by the
+ * current region thread are read (never sync-loaded).
+ */
 public final class AdjacentFlooder {
 
     private AdjacentFlooder() {
@@ -22,22 +28,30 @@ public final class AdjacentFlooder {
             int searchRadius
     ) {
         World world = origin.world();
+        if (world == null || include == null) {
+            return List.of();
+        }
         int radius = Math.max(1, Math.min(5, searchRadius));
-        Set<Long> visited = new HashSet<>();
+        int limit = maxBlocks < 0 ? Integer.MAX_VALUE : maxBlocks;
+        if (limit == 0) {
+            return List.of();
+        }
+
+        Set<String> visited = new HashSet<>();
         ArrayDeque<BlockPosition> queue = new ArrayDeque<>();
         List<BlockPosition> result = new ArrayList<>();
 
-        long originKey = pack(origin.x(), origin.y(), origin.z());
-        if (!include.test(world.getBlockAt(origin.x(), origin.y(), origin.z()).getType())) {
+        Material originType = safeType(world, origin.x(), origin.y(), origin.z());
+        if (originType == null || !include.test(originType)) {
             return result;
         }
-        visited.add(originKey);
+        visited.add(key(origin.x(), origin.y(), origin.z()));
         queue.add(origin);
 
-        while (!queue.isEmpty() && result.size() < maxBlocks) {
+        while (!queue.isEmpty() && result.size() < limit) {
             BlockPosition current = queue.poll();
-            Material type = world.getBlockAt(current.x(), current.y(), current.z()).getType();
-            if (!include.test(type)) {
+            Material type = safeType(world, current.x(), current.y(), current.z());
+            if (type == null || !include.test(type)) {
                 continue;
             }
             result.add(current);
@@ -51,20 +65,26 @@ public final class AdjacentFlooder {
                         if (dx == 0 && dy == 0 && dz == 0) {
                             continue;
                         }
-                        if (result.size() >= maxBlocks) {
+                        if (result.size() >= limit) {
                             return result;
                         }
-                        BlockPosition next = new BlockPosition(world, cx + dx, cy + dy, cz + dz);
-                        long nextKey = pack(next.x(), next.y(), next.z());
-                        if (visited.contains(nextKey)) {
+                        int nx = cx + dx;
+                        int ny = cy + dy;
+                        int nz = cz + dz;
+                        String nextKey = key(nx, ny, nz);
+                        if (!visited.add(nextKey)) {
                             continue;
                         }
-                        Material nextType = world.getBlockAt(next.x(), next.y(), next.z()).getType();
-                        if (!include.test(nextType)) {
+                        Material nextType = safeType(world, nx, ny, nz);
+                        if (nextType == null || !include.test(nextType)) {
                             continue;
                         }
-                        visited.add(nextKey);
-                        queue.add(next);
+                        BlockPosition next = new BlockPosition(world, nx, ny, nz);
+                        if (isTrunkMaterial(nextType)) {
+                            queue.addFirst(next);
+                        } else {
+                            queue.addLast(next);
+                        }
                     }
                 }
             }
@@ -72,9 +92,37 @@ public final class AdjacentFlooder {
         return result;
     }
 
-    private static long pack(int x, int y, int z) {
-        return ((long) x & 0x3FFFFFFL) << 38
-                | ((long) z & 0x3FFFFFFL) << 12
-                | (y & 0xFFFL);
+    public static boolean isTrunkMaterial(Material material) {
+        if (material == null) {
+            return false;
+        }
+        String name = material.name();
+        return name.endsWith("_LOG")
+                || name.endsWith("_WOOD")
+                || name.endsWith("_STEM")
+                || name.endsWith("_HYPHAE");
+    }
+
+    public static Material safeType(World world, int x, int y, int z) {
+        if (world == null) {
+            return null;
+        }
+        if (y < world.getMinHeight() || y >= world.getMaxHeight()) {
+            return null;
+        }
+        int chunkX = x >> 4;
+        int chunkZ = z >> 4;
+        if (!world.isChunkLoaded(chunkX, chunkZ)) {
+            return null;
+        }
+        if (!Bukkit.isOwnedByCurrentRegion(world, chunkX, chunkZ)) {
+            return null;
+        }
+        Chunk chunk = world.getChunkAt(chunkX, chunkZ);
+        return chunk.getBlock(x & 15, y, z & 15).getType();
+    }
+
+    private static String key(int x, int y, int z) {
+        return x + "," + y + "," + z;
     }
 }

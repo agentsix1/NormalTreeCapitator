@@ -17,6 +17,11 @@ public final class DropHelper {
         return new ArrayList<>(block.getDrops(tool, player));
     }
 
+    public static void spawnDrops(org.bukkit.Location at, Collection<ItemStack> stacks) {
+        org.bukkit.Location dropAt = at.clone().add(0.5, 0.5, 0.5);
+        dropStacks(dropAt, new ArrayList<>(stacks));
+    }
+
     public static void dropStacks(org.bukkit.Location dropAt, List<ItemStack> stacks) {
         for (ItemStack stack : stacks) {
             if (stack == null || stack.getType().isAir() || stack.getAmount() <= 0) {
