@@ -1,83 +1,94 @@
 # NormalTreeCapitator
 
-Cut down an entire connected tree — logs, leaves, nether stems, mushrooms, and more — with a single break. NormalTreeCapitator is a focused tree capitator plugin built for survival servers that want reliable performance, deep configuration, and broad platform support without extra bloat.
+**Chop one log. Break the whole tree.**
 
-Many tree capitator plugins were written before Folia, before large-scale async breaking, or with fixed block lists you cannot change without editing code. NormalTreeCapitator takes a different approach: every block group, tool, limit, and message is YAML-driven, large chains are broken in timed waves to reduce lag spikes, and scheduling works correctly on **Paper**, **Folia**, **Spigot**, and **Bukkit**.
+NormalTreeCapitator lets players cut down entire connected trees — logs, leaves, nether wood, mushrooms, and more — with a single axe swing. It is built for survival servers that want reliable performance on **Paper**, **Folia**, **Spigot**, and **Bukkit**, with every rule exposed in YAML.
 
-**Authors:** Agentsix1, Cristichi  
-**Discord:** [Normal Survival](https://discord.normalsurvival.com)
+This document is the full reference for the plugin: commands, permissions, every config option, messages, behavior, and troubleshooting.
+
+**Authors:** [Agentsix1](https://github.com/agentsix1) · Cristichi  
+**Original inspiration:** [Cristichi's Tree Capitator](https://www.curseforge.com/minecraft/bukkit-plugins/cristichis-tree-capitator)  
+**Discord:** [Normal Survival](https://discord.normalsurvival.com)  
+**Issues:** [GitHub Issues](https://github.com/agentsix1/NormalTreeCapitator/issues)
 
 ---
 
 ## Table of contents
 
-- [Why use NormalTreeCapitator?](#why-use-normaltreecapitator)
-- [Features](#features)
+- [Overview](#overview)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Commands](#commands)
 - [Permissions](#permissions)
-- [Configuration](#configuration)
+- [Configuration reference](#configuration-reference)
+  - [File locations](#file-locations)
+  - [defaults.enabled](#defaultsenabled)
   - [Global settings](#global-settings)
+  - [block-damages](#block-damages)
   - [Block groups](#block-groups)
-  - [Adding your own groups](#adding-your-own-groups)
-  - [Messages](#messages)
-  - [Player data](#player-data)
+  - [Adding custom groups](#adding-custom-groups)
+- [Messages reference](#messages-reference)
+- [Player data](#player-data)
 - [How it works](#how-it-works)
+  - [Activation checks](#activation-checks)
+  - [Sneak behavior](#sneak-behavior)
+  - [Flood fill & connectivity](#flood-fill--connectivity)
+  - [Sync vs async breaking](#sync-vs-async-breaking)
+  - [Drops](#drops)
+  - [Tool durability](#tool-durability)
+  - [Replant system](#replant-system)
+  - [Protection plugins](#protection-plugins)
+  - [Scheduling (Folia)](#scheduling-folia)
+- [Default content](#default-content)
 - [Building from source](#building-from-source)
-- [Server files](#server-files)
 - [Troubleshooting](#troubleshooting)
+- [Metrics](#metrics)
 
 ---
 
-## Why use NormalTreeCapitator?
+## Overview
 
-Tree capitators all do the same basic job, but the details matter on a live server:
+When a player breaks a block that belongs to a configured **group**, NormalTreeCapitator:
 
-| Concern | How NormalTreeCapitator handles it |
-|--------|-------------------------------------|
-| **Folia / multi-threaded servers** | Uses region- and entity-aware schedulers on Paper/Folia; falls back to the standard Bukkit scheduler on Spigot/Bukkit. |
-| **Lag on huge trees** | Chains above `async-start` break in waves (`blocks-per-tick`) instead of all at once. |
-| **Different tree types** | Separate configurable **groups** — trees, mushrooms, or anything you define — each with their own blocks, tools, and limits. |
-| **Player choice** | Per-player toggle with saved preferences. |
-| **Server customization** | Full `config.yml` and `messages.yml` editing; reload without restart. |
-| **Survival fairness** | Optional axe requirement, tool durability, sneak-to-activate, replant, and sapling protection. |
+1. Finds every connected block in that same group (flood fill).
+2. Cancels the vanilla break and breaks the whole chain for the player.
+3. Applies tool rules, protection checks, and optional replant.
 
-The plugin does one thing and exposes the knobs admins actually need.
+Key design goals:
 
----
-
-## Features
-
-- **Flood-fill tree breaking** — connected logs, leaves, stems, hyphae, and custom blocks break together.
-- **Multiple block groups** — e.g. `Trees` and `Other` (mushrooms) by default; add unlimited custom groups.
-- **All major wood types** — overworld logs/wood (including stripped), nether stems/hyphae, leaves, azalea, huge mushrooms, nether wart, shroomlight.
-- **Async bulk breaking** — large chains spread across ticks to protect TPS.
-- **Tool rules** — require an axe, damage durability (with Unbreaking support), optional “break axe” behavior, unbreakable tool support.
-- **Replant** — optionally replant saplings/fungi on log break; optional invincible replant protection.
-- **Per-player toggle** — `/tc toggle` with persistent `playerdata/` storage.
-- **Custom messages** — every command response and prefix in `messages.yml` with `&` color codes.
-- **Cross-platform** — Paper, Folia, Spigot, Bukkit (Minecraft **1.20+**).
-- **Lightweight** — no dependencies beyond the server API; bStats metrics included.
+| Goal | How it is handled |
+|------|-------------------|
+| **Folia-safe** | Block reads and breaks run on the correct region thread; no sync chunk loads across regions. |
+| **TPS-friendly** | Large chains break in timed **waves** instead of all at once. |
+| **Flexible** | Unlimited YAML **groups** — trees, mushrooms, bamboo, or anything you define. |
+| **Player choice** | Per-player toggle saved to disk. |
+| **Claim-aware** | Each block fires a break check; protected blocks are skipped, the rest still break. |
+| **Fair replant** | Optional auto-replant after the full tree is down, with correct sapling/fungus per species. |
 
 ---
 
 ## Requirements
 
-- **Minecraft:** 1.20 or newer
-- **Server software:** Paper, Folia, Spigot, or Bukkit
-- **Java:** 17+ (Java 21 recommended for newer Paper versions)
+| | Minimum | Recommended |
+|---|---------|-------------|
+| **Minecraft** | 1.20+ | Latest stable for your server |
+| **Server** | Paper, Folia, Spigot, or Bukkit | Paper or Folia |
+| **Java** | 17 | 21 on newer Paper builds |
+
+**Game modes:** Survival and Adventure only. Creative and Spectator are ignored.
 
 ---
 
 ## Installation
 
-1. Download or build `NormalTreeCapitator-1.0.0-SNAPSHOT.jar` (see [Building from source](#building-from-source)).
-2. Place the JAR in your server's `plugins/` folder.
+1. Download `NormalTreeCapitator-1.0.2.jar` (or build from source).
+2. Place it in your server's `plugins/` folder.
 3. Start or restart the server.
-4. Edit `plugins/NormalTreeCapitator/config.yml` and `messages.yml` as needed.
-5. Run `/tc reload` to apply changes without a full restart.
+4. Edit `plugins/NormalTreeCapitator/config.yml` and `messages.yml` if needed.
+5. Run `/tc reload` to apply config/message changes without a restart.
+
+> **Note:** Code updates require a **server restart**. `/tc reload` only reloads YAML files.
 
 On first run the plugin creates:
 
@@ -89,26 +100,41 @@ plugins/NormalTreeCapitator/
     └── <uuid>.yml
 ```
 
+On load you should see a line like:
+
+```
+[TreeCap] config .../config.yml must-sneak=true debug=false async-start=100 replant=true
+```
+
 ---
 
 ## Quick start
 
-1. Give players `normaltreecapitator.use` (enabled by default).
-2. Hold an axe and break any log in a tree.
-3. Connected blocks in the same **group** break together.
-4. Players can disable it for themselves with `/tc toggle`.
+**For players**
 
-If `must-sneak` is `true` in config (default in the shipped config), players must be sneaking while breaking.
+1. Hold an axe (or whatever tools your group allows).
+2. Break a log or leaf in a configured tree.
+3. The connected tree in that **group** breaks together.
+4. Use `/tc toggle` to turn tree cap on or off for yourself.
+
+**For admins**
+
+1. Ensure players have `normaltreecapitator.use` (default: everyone).
+2. Adjust `must-sneak`, `replant`, and limits in `config.yml`.
+3. Run `/tc reload` after edits.
+
+If `must-sneak: true` (shipped default), players must **hold sneak** while breaking to activate tree cap. See [Sneak behavior](#sneak-behavior) for the full matrix.
 
 ---
 
 ## Commands
 
-All commands use `/tc`. Aliases: `/treecapitator`, `/treecap`.
+Primary command: **`/tc`**  
+Aliases: `/treecapitator`, `/treecap`
 
 | Command | Permission | Description |
 |---------|------------|-------------|
-| `/tc help` | `normaltreecapitator.help` | Show available subcommands |
+| `/tc help` | `normaltreecapitator.help` | List available subcommands |
 | `/tc toggle` | `normaltreecapitator.toggle` | Toggle tree capitator for yourself |
 | `/tc toggle <player>` | `normaltreecapitator.toggle.others` | Toggle for another online player |
 | `/tc reload` | `normaltreecapitator.reload` | Reload `config.yml` and `messages.yml` |
@@ -129,80 +155,30 @@ All commands use `/tc`. Aliases: `/treecapitator`, `/treecap`.
 | Permission | Default | Description |
 |------------|---------|-------------|
 | `normaltreecapitator.*` | op | All permissions below |
-| `normaltreecapitator.use` | `true` | Break trees with tree capitator |
-| `normaltreecapitator.toggle` | `true` | Toggle for yourself |
-| `normaltreecapitator.toggle.others` | `false` | Toggle for other players |
-| `normaltreecapitator.reload` | `false` | Reload config files |
-| `normaltreecapitator.admin` | `false` | Break protected replanted saplings |
+| `normaltreecapitator.use` | `true` | Activate tree capitator when breaking blocks |
+| `normaltreecapitator.toggle` | `true` | Use `/tc toggle` for yourself |
+| `normaltreecapitator.toggle.others` | `false` | Use `/tc toggle <player>` |
+| `normaltreecapitator.reload` | `false` | Use `/tc reload` |
+| `normaltreecapitator.admin` | `false` | Break saplings protected by `invincible-replant` |
 | `normaltreecapitator.help` | `true` | View `/tc help` |
 
-**LuckPerms example**
+**LuckPerms examples**
 
 ```
 /lp group default permission set normaltreecapitator.use true
 /lp group default permission set normaltreecapitator.toggle true
 /lp group staff permission set normaltreecapitator.reload true
+/lp group staff permission set normaltreecapitator.toggle.others true
 ```
 
 ---
 
-## Configuration
+## Configuration reference
 
-Config file: `plugins/NormalTreeCapitator/config.yml`  
-Reload: `/tc reload`
+**File:** `plugins/NormalTreeCapitator/config.yml`  
+**Reload:** `/tc reload`
 
-### Global settings
-
-These apply to every group unless a group overrides them.
-
-```yaml
-defaults:
-  enabled: true          # New players start with tree capitator on
-
-settings:
-  max-chain: 1000        # Max blocks per chain (-1 = unlimited)
-  search-radius: 1       # Connectivity range between blocks (1–5)
-  must-sneak: true       # Require sneaking to activate
-  need-tool: true        # Require a valid tool from the group's tools list
-  damage-tool: true      # Apply durability loss per block broken
-  break-tool: true       # Remove axe when durability runs out (false = leave at 1 durability)
-  replant: false         # Replant saplings/fungi when breaking logs
-  invincible-replant: false  # Protect replanted saplings until admin breaks them
-  async-start: 100       # Chains larger than this use wave breaking
-  blocks-per-tick: 100   # Blocks broken per tick during wave breaking
-```
-
-| Setting | What it does |
-|---------|----------------|
-| `max-chain` | Caps how many blocks one activation can break. Prevents runaway chains. |
-| `search-radius` | How far the flood-fill looks for the next block. `1` = touching (26 neighbors). Higher values connect blocks farther apart. |
-| `must-sneak` | When `true`, only works while the player is sneaking. Good for preventing accidental caps. |
-| `need-tool` | When `true`, the held item must be in the group's `tools` list. |
-| `damage-tool` | When `true`, axe durability is consumed (respects Unbreaking and unbreakable tools). |
-| `break-tool` | When `true` and durability reaches zero, the axe is destroyed. When `false`, it stays at 1 durability remaining. |
-| `replant` | Replaces broken logs with the correct sapling/fungus on valid ground. |
-| `invincible-replant` | Replanted saplings cannot be broken except by players with `normaltreecapitator.admin`. |
-| `async-start` | Chains bigger than this threshold use timed waves instead of instant breaking. |
-| `blocks-per-tick` | How many blocks each wave breaks. Lower = smoother TPS, slower completion. |
-
-### Block groups
-
-Groups are the core of the config. Each group defines:
-
-- Which **blocks** chain together
-- Which **tools** activate the capitator
-- Optional per-group `max-chain` and `search-radius`
-
-**Important:** blocks only chain within the **same group**. Breaking an oak log will not chain into mushroom blocks, because they are in different groups.
-
-The default config includes:
-
-| Group | Purpose |
-|-------|---------|
-| `Trees` | Overworld/nether wood, leaves, nether wart, shroomlight |
-| `Other` | Huge mushroom stems and caps |
-
-Block names accept any of these formats:
+Block and tool IDs accept any of these formats:
 
 ```
 minecraft:oak_log
@@ -212,9 +188,398 @@ OAK_LOG
 
 Unknown block names on older Minecraft versions are **skipped with a console warning** — the rest of the config still loads.
 
-### Adding your own groups
+---
 
-Copy an existing group block, rename it, and edit the lists:
+### File locations
+
+| Path | Purpose |
+|------|---------|
+| `config.yml` | All gameplay settings, groups, block-damages |
+| `messages.yml` | Chat strings and colors |
+| `playerdata/<uuid>.yml` | Per-player enabled/disabled toggle |
+
+Always edit files under `plugins/NormalTreeCapitator/`, not copies inside the JAR.
+
+---
+
+### defaults.enabled
+
+```yaml
+defaults:
+  enabled: true
+```
+
+| Value | Meaning |
+|-------|---------|
+| `true` | New players start with tree capitator **on** until they `/tc toggle` |
+| `false` | New players start with tree capitator **off** |
+
+Once a player toggles, their choice is saved in `playerdata/` and overrides this default.
+
+---
+
+### Global settings
+
+```yaml
+settings:
+  max-chain: 1000
+  search-radius: 1
+  must-sneak: true
+  need-tool: true
+  damage-tool: true
+  break-tool: false
+  merge-item-drops: true
+  cooldown-ticks: 0
+  replant: true
+  invincible-replant: false
+  replant-consume-saplings: true
+  debug: false
+  async-start: 100
+  blocks-per-tick: 100
+  async-delay: 1
+```
+
+These apply to **every group** unless a group overrides `max-chain` or `search-radius`.
+
+#### max-chain
+
+| | |
+|---|---|
+| **Type** | Integer |
+| **Default** | `1000` |
+| **Special** | `-1` = unlimited |
+
+Maximum blocks one tree-cap activation can break. Prevents runaway chains on huge builds or misconfigured groups.
+
+Groups can override this per group (see [Block groups](#block-groups)).
+
+---
+
+#### search-radius
+
+| | |
+|---|---|
+| **Type** | Integer |
+| **Range** | `1` – `5` |
+| **Default** | `1` |
+
+How far the flood fill looks for the next connected block, measured in **Chebyshev** distance (a cube around each block).
+
+| Value | Meaning |
+|-------|---------|
+| `1` | Full 26-neighbor adjacency (faces, edges, corners) — typical for trees |
+| `2`+ | Blocks farther apart still count as connected — use carefully |
+
+Groups can override this per group.
+
+---
+
+#### must-sneak
+
+| | |
+|---|---|
+| **Type** | Boolean |
+| **Default** | `true` |
+
+Controls **when** tree capitator activates relative to the shift key.
+
+| Value | Standing | Sneaking |
+|-------|----------|----------|
+| `true` | Vanilla single-block break | Tree cap |
+| `false` | Tree cap | Vanilla single-block break |
+
+See [Sneak behavior](#sneak-behavior) for details. Shift state is tracked from toggle events so it stays accurate on Folia.
+
+---
+
+#### need-tool
+
+| | |
+|---|---|
+| **Type** | Boolean |
+| **Default** | `true` |
+
+| Value | Behavior |
+|-------|----------|
+| `true` | Held item must be an **axe** listed in the group's `tools` list |
+| `false` | Any item can trigger tree cap (still must pass other checks) |
+
+---
+
+#### damage-tool
+
+| | |
+|---|---|
+| **Type** | Boolean |
+| **Default** | `true` |
+
+| Value | Behavior |
+|-------|----------|
+| `true` | Axe durability is consumed per block (see [block-damages](#block-damages)); Unbreaking is rolled per damage point |
+| `false` | No durability loss from tree cap |
+
+Unbreakable tools (vanilla tag) never lose durability regardless of this setting.
+
+---
+
+#### break-tool
+
+| | |
+|---|---|
+| **Type** | Boolean |
+| **Default** | `false` |
+
+Only matters when `damage-tool: true`.
+
+| Value | Behavior |
+|-------|----------|
+| `true` | Axe is destroyed when durability reaches zero |
+| `false` | Chain is **capped** so the axe keeps at least **1 durability** — it never breaks from tree cap alone |
+
+Works together with [block-damages](#block-damages) and `ChainLimiter` logic.
+
+---
+
+#### merge-item-drops
+
+| | |
+|---|---|
+| **Type** | Boolean |
+| **Default** | `true` |
+
+| Value | Behavior |
+|-------|----------|
+| `true` | All item drops from the chain spawn as **one pile** at the origin block (center of first broken block) |
+| `false` | Each block drops items at its own location as it breaks |
+
+Experience is not modified by tree cap (blocks break with `exp = 0` on synthetic events; drops use vanilla `getDrops`).
+
+---
+
+#### cooldown-ticks
+
+| | |
+|---|---|
+| **Type** | Integer (ticks) |
+| **Default** | `0` |
+| **Minimum** | `0` = no cooldown |
+
+Ticks the player must wait before tree cap can activate again after a successful chain.  
+20 ticks = 1 second.
+
+Useful to prevent accidental double-activation or spam on busy servers.
+
+---
+
+#### replant
+
+| | |
+|---|---|
+| **Type** | Boolean |
+| **Default** | `true` |
+
+| Value | Behavior |
+|-------|----------|
+| `true` | After the **entire chain** finishes, stumps are replanted (see [Replant system](#replant-system)) |
+| `false` | No automatic replanting |
+
+Replant runs **after** all blocks break, not during the chain.
+
+---
+
+#### invincible-replant
+
+| | |
+|---|---|
+| **Type** | Boolean |
+| **Default** | `false` |
+
+Requires `replant: true`.
+
+| Value | Behavior |
+|-------|----------|
+| `true` | Replanted saplings/fungi (and block below) are **protected** — normal players cannot break them |
+| `false` | Replanted blocks behave like normal saplings |
+
+Players with `normaltreecapitator.admin` can break protected saplings.
+
+---
+
+#### replant-consume-saplings
+
+| | |
+|---|---|
+| **Type** | Boolean |
+| **Default** | `true` |
+
+Requires `replant: true`.
+
+| Value | Behavior |
+|-------|----------|
+| `true` | Each stump replant **consumes one matching sapling/fungus/propagule** from the tree's collected drops |
+| `false` | Stumps are planted **for free** without consuming drops |
+
+Prevents sapling duplication when `true`.
+
+---
+
+#### debug
+
+| | |
+|---|---|
+| **Type** | Boolean |
+| **Default** | `false` |
+
+| Value | Behavior |
+|-------|----------|
+| `true` | Writes detailed `[TreeCap]` lines to console / `latest.log` |
+| `false` | Silent except errors and config load line |
+
+Useful lines include `evaluate`, `START`, per-block `RESULT=BROKEN` / `SKIP`, and replant `REPLANT ... RESULT=PLANTED`. See [Troubleshooting](#troubleshooting).
+
+---
+
+#### async-start
+
+| | |
+|---|---|
+| **Type** | Integer |
+| **Default** | `100` |
+| **Minimum** | `1` |
+
+| Condition | Break mode |
+|-----------|------------|
+| Chain size **≤** `async-start` | **Sync** — all blocks break in one pass (still region-scheduled on Folia) |
+| Chain size **>** `async-start` | **Async waves** — see below |
+
+Lower values move more trees to wave breaking (smoother TPS, slightly longer total time).
+
+---
+
+#### blocks-per-tick
+
+| | |
+|---|---|
+| **Type** | Integer |
+| **Default** | `100` |
+| **Minimum** | `1` |
+
+During **async wave** breaking, how many blocks each wave attempts to break.
+
+| Tuning | Effect |
+|--------|--------|
+| **Lower** (e.g. `25`–`50`) | Smoother TPS, slower tree completion |
+| **Higher** (e.g. `150`+) | Faster completion, higher per-tick load |
+
+---
+
+#### async-delay
+
+| | |
+|---|---|
+| **Type** | Integer (ticks) |
+| **Default** | `1` |
+| **Minimum** | `0` |
+
+Ticks to wait **between async waves** after the first wave.
+
+| Value | Behavior |
+|-------|----------|
+| `0` | Waves run back-to-back (still one wave per scheduling tick) |
+| `1`+ | Pause between waves — spreads load over more server ticks |
+
+---
+
+### block-damages
+
+```yaml
+block-damages:
+  logs:
+    damage: 1
+    blocks:
+      - minecraft:oak_log
+      # ...
+  leaves:
+    damage: 0
+    blocks:
+      - minecraft:oak_leaves
+      # ...
+```
+
+Defines how much **durability** each block type costs when `damage-tool: true`.
+
+| Concept | Detail |
+|---------|--------|
+| **Structure** | Named sections (`logs`, `leaves`, or any label you choose) with `damage:` and a `blocks:` list |
+| **damage** | Integer ≥ `0` — durability points lost per block broken |
+| **Unlisted blocks** | Leaves, nether wart blocks, and shroomlight default to **0**; everything else defaults to **1** |
+| **Unbreaking** | Rolled **per damage point**, same as vanilla |
+
+**Example — make all leaves free but logs cost 2:**
+
+```yaml
+block-damages:
+  heavy_logs:
+    damage: 2
+    blocks:
+      - minecraft:oak_log
+      - minecraft:spruce_log
+  free_leaves:
+    damage: 0
+    blocks:
+      - minecraft:oak_leaves
+      - minecraft:spruce_leaves
+```
+
+When `break-tool: false`, the plugin stops the chain once the axe would drop below 1 durability, accounting for these costs in order (trunks first — see [How it works](#how-it-works)).
+
+---
+
+### Block groups
+
+Groups are the core of tree capitator. Each group is a named section under `groups:` in config.
+
+```yaml
+groups:
+  Trees:
+    blocks:
+      - minecraft:oak_log
+      - minecraft:oak_leaves
+    tools:
+      - minecraft:iron_axe
+      - minecraft:diamond_axe
+```
+
+#### Group fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `blocks` | **Yes** | Block types that belong to this group and can chain together |
+| `tools` | **Yes** | Items that can activate tree cap for this group (usually axes) |
+| `max-chain` | No | Overrides global `settings.max-chain` for this group only |
+| `search-radius` | No | Overrides global `settings.search-radius` for this group only |
+
+#### Group rules
+
+1. **Same group only** — breaking oak log chains into oak leaves **only if both are in the same group's `blocks` list**.
+2. **Different groups never chain** — `Trees` and `Other` (mushrooms) stay separate by default.
+3. **Group names are labels** — not shown to players; use any YAML key you like (`Trees`, `Mushrooms`, `Bamboo`, etc.).
+4. **First match wins** — if a block appears in multiple groups, the first group loaded owns it in the internal index (avoid duplicate block entries across groups).
+
+#### Default groups
+
+| Group | Contents |
+|-------|----------|
+| **Trees** | Overworld logs/wood (incl. stripped), nether stems/hyphae, all major leaves, azalea, nether wart, shroomlight |
+| **Other** | Huge mushroom stem and cap blocks |
+
+Pale oak and other newer blocks are listed in config; on older servers missing those IDs, they are skipped with a warning.
+
+---
+
+### Adding custom groups
+
+Copy an existing group, rename it, and edit the lists:
 
 ```yaml
 groups:
@@ -230,74 +595,207 @@ groups:
       - minecraft:netherite_axe
 ```
 
-You can add as many groups as you want. Group names are labels for your own organization — they are not shown to players.
+**Tips**
 
-**Per-group overrides**
+- Keep mushrooms in their own group if you don't want them chaining with normal trees.
+- Use a higher `search-radius` only when blocks in your build are intentionally spaced apart.
+- Set a lower `max-chain` on groups that should cap smaller (e.g. bamboo farms).
 
-```yaml
-  Trees:
-    max-chain: 500       # Trees can break up to 500 blocks
-    search-radius: 1
-    blocks:
-      - minecraft:oak_log
-      # ...
-```
+After editing, run `/tc reload`.
 
-If `max-chain` or `search-radius` is omitted, the global `settings` values are used.
+---
 
-### Messages
+## Messages reference
 
-File: `plugins/NormalTreeCapitator/messages.yml`
+**File:** `plugins/NormalTreeCapitator/messages.yml`  
+**Reload:** `/tc reload`  
+**Colors:** Standard `&` color codes (e.g. `&a` green, `&c` red)
 
-Every player-facing string can be customized. Uses standard `&` color codes and `{placeholder}` replacements.
+Every key is prefixed automatically with `prefix` when sent to players.
 
-```yaml
-prefix: "&9[NormalTreeCapitator]&f "
-
-toggle-self: "{feature} {state}"
-player-not-found: "&cPlayer not found: &6{player}"
-sapling-protected: "&cThis replanted sapling is protected."
-```
-
-| Key | Placeholders | Used when |
-|-----|--------------|-----------|
-| `usage` | `{label}`, `{usage}` | Invalid command usage |
+| Key | Placeholders | When it is used |
+|-----|--------------|-----------------|
+| `prefix` | — | Prepended to all messages |
+| `usage` | `{label}`, `{usage}` | Invalid command syntax |
+| `unknown-subcommand` | `{label}` | Unrecognized subcommand |
+| `no-permission-toggle-others` | — | `/tc toggle <player>` without permission |
+| `player-not-found` | `{player}` | Target not online |
 | `toggle-self` | `{feature}`, `{state}` | Player toggles themselves |
-| `toggle-other-sender` | `{feature}`, `{state}`, `{target}` | Staff toggles another player |
-| `toggle-other-target` | `{feature}`, `{state}`, `{sender}` | Message sent to the target |
+| `toggle-other-sender` | `{feature}`, `{state}`, `{target}` | Staff toggles another player (sender view) |
+| `toggle-other-target` | `{feature}`, `{state}`, `{sender}` | Staff toggles another player (target view) |
+| `only-players` | — | Console tries `/tc toggle` without a player arg |
+| `no-permission` | — | Missing toggle permission |
+| `no-permission-reload` | — | Missing reload permission |
+| `reload-success` | — | After `/tc reload` |
+| `help-header` | `{label}` | `/tc help` header line |
 | `help-toggle` | `{label}`, `{feature}` | Help line for toggle |
+| `help-toggle-player` | `{label}` | Help line for toggle others |
+| `help-reload` | `{label}` | Help line for reload |
+| `sapling-protected` | — | Breaking invincible replant without admin perm |
 | `feature-treecapitator` | — | Display name in toggle messages |
-| `state-enabled` / `state-disabled` | — | Toggle state text |
+| `feature-tree-capitator` | — | Lowercase feature name in help text |
+| `state-enabled` | — | Text shown when feature is on |
+| `state-disabled` | — | Text shown when feature is off |
+| `processing` | `{feature}` | When a tree chain starts (e.g. "tree breaks") |
+| `processing-done` | `{feature}` | When a tree chain finishes |
 
-Reload messages with `/tc reload`.
+**Example customization**
 
-### Player data
-
-Per-player toggle state is stored in:
-
+```yaml
+prefix: "&2[TreeCap]&r "
+processing: "&7Chopping {feature}… hang tight!"
+processing-done: "&aDone chopping {feature}!"
+toggle-self: "&7{feature} is now {state}&7."
 ```
-plugins/NormalTreeCapitator/playerdata/<uuid>.yml
-```
+
+---
+
+## Player data
+
+**Folder:** `plugins/NormalTreeCapitator/playerdata/`  
+**File per player:** `<uuid>.yml`
 
 ```yaml
 enabled: true
 ```
 
-New players use `defaults.enabled` from `config.yml` until they toggle or a file is created.
+| State | Meaning |
+|-------|---------|
+| File missing | Uses `defaults.enabled` from `config.yml` |
+| `enabled: true` | Tree cap allowed (still needs permission + other checks) |
+| `enabled: false` | Player turned it off with `/tc toggle` |
+
+Data is saved when a player toggles. Deleting a player's file resets them to the default on next join.
 
 ---
 
 ## How it works
 
-1. A player breaks a block that belongs to a configured group.
-2. The plugin checks permissions, toggle state, game mode (Survival/Adventure only), sneak requirement, and tool validity.
-3. A flood-fill collects all connected blocks of the same group (within `search-radius` and `max-chain`).
-4. If the chain is small (≤ `async-start`), blocks break immediately with per-block drops.
-5. If the chain is large (> `async-start`), breaks run in waves of `blocks-per-tick`, merging drops at the origin block.
-6. Tool durability is applied up front for large chains (matching vanilla order: damage first, then break).
-7. Replant runs on individual logs when enabled, placing the correct sapling or fungus.
+### Activation checks
 
-Scheduling is region-safe on Folia: entity work runs on the player’s entity scheduler, block changes run on the region that owns each block.
+When a player breaks a block, the plugin runs these checks **in order**:
+
+1. Block is not already being broken by tree cap (anti-recursion).
+2. Game mode is Survival or Adventure.
+3. Block belongs to a configured **group**.
+4. Player has `normaltreecapitator.use`.
+5. Player has tree cap **enabled** (toggle / default).
+6. Invincible replant protection (if breaking a protected sapling).
+7. **Sneak gate** passes (`must-sneak`).
+8. Not on **cooldown** (`cooldown-ticks`).
+9. **Tool** is valid (`need-tool` + group's `tools` list + axe usable).
+10. Flood fill finds at least one block after **durability budget** trim.
+
+If all pass, the original break is cancelled and the chain runs.
+
+---
+
+### Sneak behavior
+
+```
+must-sneak: true  →  sneak to cap, stand for vanilla
+must-sneak: false →  stand to cap, sneak for vanilla
+```
+
+Shift is tracked from `PlayerToggleSneakEvent` plus `player.isSneaking()` at break time.
+
+---
+
+### Flood fill & connectivity
+
+1. Start at the broken block.
+2. Collect all blocks in the same **group** within `search-radius` of any already-collected block.
+3. Stop at `max-chain` (or unlimited if `-1`).
+4. **Trunks first** — logs, wood, stems, and hyphae are ordered before leaves so durability and limits apply sensibly.
+5. On Folia, only **loaded chunks owned by the current region** are read (no sync loads).
+
+Species does **not** affect connectivity — only whether blocks share the same group list. Species **does** affect replant sapling matching.
+
+---
+
+### Sync vs async breaking
+
+| | Sync | Async (waves) |
+|---|------|----------------|
+| **When** | Chain size ≤ `async-start` | Chain size > `async-start` |
+| **Speed** | All blocks scheduled immediately | `blocks-per-tick` per wave, `async-delay` between waves |
+| **Messages** | Processing + done chat messages | Same |
+| **Drops** | Merged or per-block per `merge-item-drops` | Same |
+| **Replant** | After last block + 1 tick settle | Same |
+
+---
+
+### Drops
+
+- Drops come from vanilla `block.getDrops(tool, player)`.
+- **`merge-item-drops: true`** — one pile at origin after chain completes.
+- **`merge-item-drops: false`** — items spawn as each block breaks.
+- Replant sapling consumption pulls from the accumulated drop pool when `replant-consume-saplings: true`.
+
+---
+
+### Tool durability
+
+- Applied **per block** as it breaks (not all upfront).
+- Cost per block from [block-damages](#block-damages) (default 1 for logs, 0 for leaves).
+- **Unbreaking** enchantment rolled per damage point.
+- If `break-tool: false`, chain stops before the axe would break (keeps 1 durability).
+
+---
+
+### Replant system
+
+When `replant: true`:
+
+1. **During break** — each log records position, species, ground validity, and expected sapling.
+2. **After all blocks break** — lowest log per column becomes a stump candidate.
+3. **2×2 expansion** — dark oak / multi-column bases add sibling corners when those columns were broken.
+4. **One tick later** — saplings planted at each stump on that block's region thread.
+5. **Consumption** — if `replant-consume-saplings: true`, one matching sapling removed from drops per plant.
+
+Supported replant types include overworld saplings, mangrove propagules, crimson/warped fungus, and pale oak where the server version supports it.
+
+Replanted blocks use direct `setType` (no synthetic place event) to avoid false cancellations while players are sneaking.
+
+---
+
+### Protection plugins
+
+Each block in the chain fires a synthetic **`BlockBreakEvent`** with drops and XP disabled. If a protection plugin **cancels** the event for that block, that block is **skipped** — the rest of the tree still breaks.
+
+This applies to WorldGuard, GriefPrevention, Lands, Residence, CoreProtect logging, and similar plugins that listen to break events.
+
+---
+
+### Scheduling (Folia)
+
+| Work type | Scheduler |
+|-----------|-----------|
+| Player cooldown / chat messages | Entity scheduler (player) |
+| Breaking each block | Region scheduler (block location) |
+| Replant at stump | Region scheduler (stump location) |
+
+This keeps all block access on the owning region thread.
+
+---
+
+## Default content
+
+**Trees group includes (where supported by your MC version):**
+
+- Overworld logs, stripped logs, wood, stripped wood
+- Cherry, mangrove, pale oak variants
+- Nether crimson/warped stems and hyphae (incl. stripped)
+- All major leaf types, azalea leaves
+- Nether wart blocks, shroomlight
+
+**Other group includes:**
+
+- Mushroom stem, brown mushroom block, red mushroom block
+
+**Tools (both default groups):**
+
+- Wooden through netherite axe
 
 ---
 
@@ -310,64 +808,90 @@ cd NormalTreeCapitator
 mvn clean package
 ```
 
-Output JAR:
+**Output:**
 
 ```
-target/NormalTreeCapitator-1.0.0-SNAPSHOT.jar
+target/NormalTreeCapitator-1.0.2.jar
 ```
 
-This is a shaded JAR (bStats is relocated internally). Copy it to `plugins/` — no extra libraries needed.
+The JAR is shaded (bStats relocated). No extra libraries needed at runtime.
 
----
-
-## Server files
-
-| File / folder | Purpose |
-|---------------|---------|
-| `config.yml` | Settings, block groups, tools |
-| `messages.yml` | Prefix, command messages, toggle text |
-| `playerdata/` | Per-player enabled/disabled state |
-
-Deleting `config.yml` or `messages.yml` and restarting regenerates defaults from the JAR (back up custom edits first).
+The built plugin version string appears in `/plugins` as e.g. `1.0.2 Build 3` (build number auto-increments each package).
 
 ---
 
 ## Troubleshooting
 
-**Tree capitator does nothing**
+### Tree capitator does nothing
 
-- Check `normaltreecapitator.use` permission.
-- Run `/tc toggle` — player may have it disabled.
-- If `must-sneak: true`, the player must be sneaking.
-- Confirm the block is listed in a group in `config.yml`.
-- Confirm the held item is in that group's `tools` list (if `need-tool: true`).
+- Confirm **`normaltreecapitator.use`** permission.
+- Run **`/tc toggle`** — player may have disabled it.
+- Check **`must-sneak`** — wrong sneak state = vanilla break only.
+- Confirm the block is in a group's **`blocks`** list.
+- Confirm the held item is in that group's **`tools`** list (if `need-tool: true`).
+- Check **`cooldown-ticks`** — player may still be on cooldown.
+- Enable **`debug: true`**, reload, break a log, and read `[TreeCap] evaluate` / `blocked:` lines in `latest.log`.
 
-**Only one block breaks**
+### Only one block breaks (vanilla)
 
-- The broken block may not be connected to others within `search-radius`.
-- `max-chain` may be too low.
-- Another plugin may be cancelling `BlockBreakEvent`.
+- Sneak gate blocked tree cap (see [Sneak behavior](#sneak-behavior)).
+- Toggle is off or permission missing.
+- Block not in any group.
 
-**Unknown block warnings on startup**
+### Chain stops early / axe stops mid-tree
 
-- A block ID in config does not exist on your Minecraft version (e.g. `pale_oak_log` on 1.20). Remove it or upgrade; other blocks still work.
+- **`max-chain`** too low.
+- **`break-tool: false`** with low durability — chain capped to preserve 1 durability.
+- Protected blocks in the middle — skipped by claim plugins.
 
-**Config changes not applying**
+### Replant not working
 
-- Run `/tc reload` or restart the server.
-- Edit the file in `plugins/NormalTreeCapitator/`, not the copy inside the JAR.
+- **`replant: false`** in config.
+- **`replant-consume-saplings: true`** but no saplings in drops — enable debug and look for `no-sapling-in-drops`.
+- Ground under stump not valid (mid-tree logs don't replant).
+- Enable **`debug: true`** and search for `REPLANT` lines.
 
-**Lag on huge trees**
+### Unknown block warnings on startup
 
-- Lower `blocks-per-tick` (e.g. `50`).
-- Lower `async-start` so wave breaking kicks in sooner.
-- Lower `max-chain` to cap chain size.
+- Block ID does not exist on your Minecraft version (e.g. `pale_oak_log` on early 1.20). Remove from config or upgrade; other blocks still work.
+
+### Config changes not applying
+
+- Run **`/tc reload`** or restart.
+- Edit **`plugins/NormalTreeCapitator/config.yml`**, not the JAR copy.
+
+### Lag on huge trees
+
+- Lower **`blocks-per-tick`** (e.g. `25`–`50`).
+- Lower **`async-start`** so wave breaking starts sooner.
+- Increase **`async-delay`** slightly to spread waves.
+- Lower **`max-chain`** to cap tree size.
+
+### Debug log cheat sheet
+
+| Log fragment | Meaning |
+|--------------|---------|
+| `evaluate sneaking=` | Sneak state at break time |
+| `blocked: must-sneak` | Sneak gate failed |
+| `blocked: on cooldown` | Wait for cooldown |
+| `skip: tool durability budget exhausted` | Axe can't afford full chain |
+| `START ... mode=async/sync` | Chain accepted |
+| `RESULT=SKIP reason=protected` | Claim plugin blocked that block |
+| `REPLANT ... RESULT=PLANTED` | Stump replanted successfully |
 
 ---
 
-## License & metrics
+## Metrics
 
-This plugin includes [bStats](https://bstats.org/) for anonymous usage statistics (plugin ID: **32277**). No player data is sent through bStats.
+This plugin includes [bStats](https://bstats.org/) for **anonymous** usage statistics (plugin ID: **32277**). No player names, UUIDs, or world data are sent through bStats.
+
+---
+
+## Links
+
+- **GitHub:** https://github.com/agentsix1/NormalTreeCapitator
+- **Discord:** https://discord.normalsurvival.com
+- **Issues:** https://github.com/agentsix1/NormalTreeCapitator/issues
 
 ---
 
