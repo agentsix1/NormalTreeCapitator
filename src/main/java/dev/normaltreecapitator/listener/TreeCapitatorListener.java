@@ -81,7 +81,8 @@ public final class TreeCapitatorListener implements Listener {
         }
 
         Material material = block.getType();
-        TreeBlockGroup group = config.groupFor(material);
+        ItemStack tool = player.getInventory().getItemInMainHand();
+        TreeBlockGroup group = config.groupFor(material, tool.getType());
         if (group == null) {
             return;
         }
@@ -90,7 +91,7 @@ public final class TreeCapitatorListener implements Listener {
             return;
         }
 
-        handleTreeCapitator(event, player, block, material, group, config);
+        handleTreeCapitator(event, player, block, material, tool, group, config);
     }
 
     private void handleTreeCapitator(
@@ -98,10 +99,10 @@ public final class TreeCapitatorListener implements Listener {
             Player player,
             Block block,
             Material material,
+            ItemStack tool,
             TreeBlockGroup group,
             TreeCapitatorConfig config
     ) {
-        ItemStack tool = player.getInventory().getItemInMainHand();
         boolean sneaking = resolveSneaking(player);
 
         TreeCapLog.info(config, plugin, player,
@@ -132,9 +133,10 @@ public final class TreeCapitatorListener implements Listener {
                             + " origin=" + TreeCapLog.blockLabel(block.getLocation(), material));
             return;
         }
-        if (!toolAllowed(tool, config)) {
+        if (!toolAllowed(tool, group, config)) {
             TreeCapLog.info(config, plugin, player,
-                    "blocked: tool not allowed for treecap tool=" + tool.getType());
+                    "blocked: tool not allowed for treecap tool=" + tool.getType()
+                            + " group=" + group.id());
             return;
         }
 
@@ -430,12 +432,13 @@ public final class TreeCapitatorListener implements Listener {
         });
     }
 
-    private boolean toolAllowed(ItemStack tool, TreeCapitatorConfig config) {
-        if (!config.allowsTreeTool(tool.getType())) {
-            return false;
-        }
+    private boolean toolAllowed(ItemStack tool, TreeBlockGroup group, TreeCapitatorConfig config) {
         if (!config.needTool()) {
             return true;
+        }
+        // Group membership for this tool was already required in groupFor(...).
+        if (!group.allowsTool(tool.getType())) {
+            return false;
         }
         return ToolHelper.axeUsable(tool, true, config.breakTool());
     }

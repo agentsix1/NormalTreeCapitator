@@ -1,0 +1,233 @@
+# NormalTreeCapitator — tree capitator settings
+# By Agentsix1 and Cristichi
+# Discord: https://discord.normalsurvival.com
+# Reload with /tc reload
+# Blocks/tools accept OAK_LOG, oak_log, or minecraft:oak_log
+# Unknown block names on older server versions are skipped with a warning at load time.
+
+defaults:
+  enabled: true
+
+settings:
+  max-chain: 1000
+  search-radius: 1
+  # true = tree cap while sneaking; false = tree cap while standing (sneaking uses vanilla break)
+  must-sneak: true
+  need-tool: true
+  damage-tool: true
+  # When false, chains are capped so the tool keeps 1 durability (never breaks from bulk mining).
+  break-tool: false
+  merge-item-drops: true
+  cooldown-ticks: 0
+  replant: true
+  invincible-replant: false
+  # When true, each replant consumes one matching sapling/fungus from tree drops.
+  replant-consume-saplings: true
+  # When true, verbose [TreeCap] lines are written to console / logs/latest.log.
+  debug: false
+  # Chains larger than async-start use timed waves; processing chat messages show on all chains.
+  async-start: 100
+  blocks-per-tick: 100
+  # Ticks to wait between async break waves (0 = no delay).
+  async-delay: 1
+
+# Durability lost per block broken by tree capitator.
+# Each named section under block-damages is a custom label (logs, leaves, mushrooms,
+# heavy_logs, …) with its own damage value and block list. Add or remove freely.
+# This section is never overwritten by jar defaults on /tc reload.
+# Listed blocks use that section's damage. Unlisted leaves/wart/shroomlight default
+# to 0; all other unlisted blocks default to 1. Unbreaking is rolled per damage point.
+block-damages:
+  logs:
+    damage: 1
+    blocks:
+      - minecraft:oak_log
+      - minecraft:spruce_log
+      - minecraft:birch_log
+      - minecraft:jungle_log
+      - minecraft:acacia_log
+      - minecraft:dark_oak_log
+      - minecraft:mangrove_log
+      - minecraft:cherry_log
+      - minecraft:pale_oak_log
+      - minecraft:crimson_stem
+      - minecraft:warped_stem
+      - minecraft:oak_wood
+      - minecraft:spruce_wood
+      - minecraft:birch_wood
+      - minecraft:jungle_wood
+      - minecraft:acacia_wood
+      - minecraft:dark_oak_wood
+      - minecraft:mangrove_wood
+      - minecraft:cherry_wood
+      - minecraft:pale_oak_wood
+      - minecraft:crimson_hyphae
+      - minecraft:warped_hyphae
+  leaves:
+    damage: 0
+    blocks:
+      - minecraft:oak_leaves
+      - minecraft:spruce_leaves
+      - minecraft:birch_leaves
+      - minecraft:jungle_leaves
+      - minecraft:acacia_leaves
+      - minecraft:dark_oak_leaves
+      - minecraft:mangrove_leaves
+      - minecraft:cherry_leaves
+      - minecraft:pale_oak_leaves
+      - minecraft:azalea_leaves
+      - minecraft:flowering_azalea_leaves
+      - minecraft:nether_wart_block
+      - minecraft:warped_wart_block
+      - minecraft:shroomlight
+
+# ---------------------------------------------------------------------------
+# Groups — add as many custom sections as you want
+# ---------------------------------------------------------------------------
+# Each entry under "groups:" is its own tree-cap rule set. The name is only a
+# label for you (e.g. Trees, stone, iron, Mushrooms); it is not shown in-game.
+#
+# When a player breaks a block with a listed tool, connected blocks in that
+# same group are broken together (flood-fill). Blocks in different groups
+# never chain into each other.
+#
+# Group selection (need-tool: true):
+#   First group that lists BOTH the broken block AND the held tool wins.
+#   The same block may appear in multiple groups with different tools
+#   (e.g. stone axe = oak/birch only; iron axe = oak + dark oak + jungle).
+#
+# Required per group:
+#   blocks  — list of block IDs (see formats below)
+#   tools   — items that trigger capitator for this group (usually axes)
+#
+# Optional per group (falls back to "settings" above if omitted):
+#   max-chain      — max blocks broken in one chain (-1 = unlimited)
+#   search-radius  — how far to look for the next connected block (1–5)
+#
+# Block name formats (all work):
+#   minecraft:oak_log
+#   oak_log
+#   OAK_LOG
+#
+# Example — tool tiers with overlapping woods:
+#
+#   stone:
+#     blocks:
+#       - minecraft:oak_log
+#       - minecraft:oak_leaves
+#       - minecraft:birch_log
+#       - minecraft:birch_leaves
+#     tools:
+#       - minecraft:stone_axe
+#   iron:
+#     blocks:
+#       - minecraft:oak_log
+#       - minecraft:oak_leaves
+#       - minecraft:birch_log
+#       - minecraft:birch_leaves
+#       - minecraft:dark_oak_log
+#       - minecraft:dark_oak_leaves
+#     tools:
+#       - minecraft:iron_axe
+#
+# After editing, run /tc reload (or restart the server).
+# Unknown block names on older Minecraft versions are skipped with a warning.
+# Your groups section is never overwritten by the jar defaults — remove or
+# rename Trees / Other freely; /tc reload will not put them back.
+# ---------------------------------------------------------------------------
+
+groups:
+  Trees:
+    # Optional overrides for this group only (remove to use global "settings"):
+    # max-chain: 1000
+    # search-radius: 1
+    blocks:
+      # Overworld logs
+      - minecraft:oak_log
+      - minecraft:spruce_log
+      - minecraft:birch_log
+      - minecraft:jungle_log
+      - minecraft:acacia_log
+      - minecraft:dark_oak_log
+      - minecraft:mangrove_log
+      - minecraft:cherry_log
+      - minecraft:pale_oak_log
+      # Stripped overworld logs
+      - minecraft:stripped_oak_log
+      - minecraft:stripped_spruce_log
+      - minecraft:stripped_birch_log
+      - minecraft:stripped_jungle_log
+      - minecraft:stripped_acacia_log
+      - minecraft:stripped_dark_oak_log
+      - minecraft:stripped_mangrove_log
+      - minecraft:stripped_cherry_log
+      - minecraft:stripped_pale_oak_log
+      # Overworld wood (all-bark faces)
+      - minecraft:oak_wood
+      - minecraft:spruce_wood
+      - minecraft:birch_wood
+      - minecraft:jungle_wood
+      - minecraft:acacia_wood
+      - minecraft:dark_oak_wood
+      - minecraft:mangrove_wood
+      - minecraft:cherry_wood
+      - minecraft:pale_oak_wood
+      # Stripped overworld wood
+      - minecraft:stripped_oak_wood
+      - minecraft:stripped_spruce_wood
+      - minecraft:stripped_birch_wood
+      - minecraft:stripped_jungle_wood
+      - minecraft:stripped_acacia_wood
+      - minecraft:stripped_dark_oak_wood
+      - minecraft:stripped_mangrove_wood
+      - minecraft:stripped_cherry_wood
+      - minecraft:stripped_pale_oak_wood
+      # Nether stems
+      - minecraft:crimson_stem
+      - minecraft:warped_stem
+      - minecraft:stripped_crimson_stem
+      - minecraft:stripped_warped_stem
+      # Nether hyphae
+      - minecraft:crimson_hyphae
+      - minecraft:warped_hyphae
+      - minecraft:stripped_crimson_hyphae
+      - minecraft:stripped_warped_hyphae
+      # Overworld leaves
+      - minecraft:oak_leaves
+      - minecraft:spruce_leaves
+      - minecraft:birch_leaves
+      - minecraft:jungle_leaves
+      - minecraft:acacia_leaves
+      - minecraft:dark_oak_leaves
+      - minecraft:mangrove_leaves
+      - minecraft:cherry_leaves
+      - minecraft:pale_oak_leaves
+      # Azalea leaves
+      - minecraft:azalea_leaves
+      - minecraft:flowering_azalea_leaves
+      # Nether tree foliage / glow
+      - minecraft:nether_wart_block
+      - minecraft:warped_wart_block
+      - minecraft:shroomlight
+    tools:
+      - minecraft:wooden_axe
+      - minecraft:stone_axe
+      - minecraft:iron_axe
+      - minecraft:golden_axe
+      - minecraft:diamond_axe
+      - minecraft:netherite_axe
+  Other:
+    # Huge mushrooms — separate group so they do not chain with normal trees.
+    # Duplicate the "Other:" block above to add more custom groups.
+    blocks:
+      # Huge mushroom caps and stems
+      - minecraft:mushroom_stem
+      - minecraft:brown_mushroom_block
+      - minecraft:red_mushroom_block
+    tools:
+      - minecraft:wooden_axe
+      - minecraft:stone_axe
+      - minecraft:iron_axe
+      - minecraft:golden_axe
+      - minecraft:diamond_axe
+      - minecraft:netherite_axe

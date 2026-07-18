@@ -33,6 +33,9 @@ public final class TreeCapitatorCommand implements TabExecutor {
         if (handleHelp(sender, label, args)) {
             return true;
         }
+        if (handleVersion(sender, args)) {
+            return true;
+        }
         if (handleReload(sender, args)) {
             return true;
         }
@@ -48,6 +51,7 @@ public final class TreeCapitatorCommand implements TabExecutor {
         List<String> out = new ArrayList<>();
         if (args.length == 1) {
             suggest(out, args[0], "help");
+            suggest(out, args[0], "version");
             suggest(out, args[0], "toggle");
             if (sender.hasPermission("normaltreecapitator.reload")) {
                 suggest(out, args[0], "reload");
@@ -131,11 +135,20 @@ public final class TreeCapitatorCommand implements TabExecutor {
         return true;
     }
 
+    private boolean handleVersion(CommandSender sender, String[] args) {
+        if (args.length == 0 || !args[0].equalsIgnoreCase("version")) {
+            return false;
+        }
+        plugin.updateNotifier().sendVersionReport(sender);
+        return true;
+    }
+
     private boolean handleHelp(CommandSender sender, String label, String[] args) {
         if (args.length == 0 || !args[0].equalsIgnoreCase("help")) {
             return false;
         }
         plugin.messages().send(sender, "help-header", PluginMessages.map("label", label));
+        plugin.messages().send(sender, "help-version", PluginMessages.map("label", label));
         plugin.messages().send(sender, "help-toggle", PluginMessages.map(
                 "label", label,
                 "feature", featureName("feature-tree-capitator")

@@ -103,4 +103,8 @@ public final class NormalTreeCapitator extends JavaPlugin {
     public BreakSession sessions() {
         return sessions;
     }
+
+    public UpdateNotifier updateNotifier() {
+        return updateNotifier;
+    }
 }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="maven-antrun-" default="main">
+  <target name="main">
+    <propertyfile file="C:\Users\spama\Desktop\NormalTreeCapitator/build.properties">
+      <entry default="0" type="int" operation="+" value="1" key="buildNumber" />
+    </propertyfile>
+    <loadproperties srcFile="C:\Users\spama\Desktop\NormalTreeCapitator/build.properties" />
+    <echo message="NormalTreeCapitator build number: ${buildNumber}" />
+  </target>
+</project>

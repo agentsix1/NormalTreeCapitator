@@ -4,6 +4,7 @@ import dev.normaltreecapitator.config.TreeCapitatorConfig;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -32,26 +33,38 @@ public final class ChainLimiter {
         }
         int budget = Math.max(0, remaining - 1);
         int spent = 0;
-        int allowed = 0;
+        List<BlockPosition> costly = new ArrayList<>(targets.size());
+        List<BlockPosition> free = new ArrayList<>(targets.size());
+
         for (BlockPosition pos : targets) {
             Material type = AdjacentFlooder.safeType(pos.world(), pos.x(), pos.y(), pos.z());
             int cost = type == null ? 1 : config.blockDamage(type);
             if (cost <= 0) {
-                allowed++;
+                // Zero-cost blocks (typically leaves) never spend durability — keep them
+                // even after the costly-block budget is exhausted so replant can get saplings.
+                free.add(pos);
                 continue;
             }
             if (spent + cost > budget) {
+                // Stop taking further costly blocks; free foliage is still appended below.
                 break;
             }
             spent += cost;
-            allowed++;
+            costly.add(pos);
         }
-        if (allowed <= 0) {
+
+        if (costly.isEmpty() && free.isEmpty()) {
             return List.of();
         }
-        if (allowed >= targets.size()) {
-            return targets;
+        if (free.isEmpty()) {
+            return List.copyOf(costly);
         }
-        return List.copyOf(targets.subList(0, allowed));
+        if (costly.isEmpty()) {
+            return List.copyOf(free);
+        }
+        List<BlockPosition> allowed = new ArrayList<>(costly.size() + free.size());
+        allowed.addAll(costly);
+        allowed.addAll(free);
+        return List.copyOf(allowed);
     }
 }

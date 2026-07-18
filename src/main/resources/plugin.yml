@@ -10,7 +10,7 @@ commands:
   tc:
     description: Tree Capitator controls
     usage: /tc help
-    aliases: [treecapitator, treecap]
+    aliases: [treecapitator, treecap, normaltreecap]
 
 permissions:
   normaltreecapitator.*:

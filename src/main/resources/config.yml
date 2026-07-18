@@ -32,8 +32,11 @@ settings:
   async-delay: 1
 
 # Durability lost per block broken by tree capitator.
-# Listed blocks use the group damage. Unlisted leaves/wart/shroomlight default to 0;
-# all other unlisted blocks default to 1. Unbreaking is still rolled per damage point.
+# Each named section under block-damages is a custom label (logs, leaves, mushrooms,
+# heavy_logs, …) with its own damage value and block list. Add or remove freely.
+# This section is never overwritten by jar defaults on /tc reload.
+# Listed blocks use that section's damage. Unlisted leaves/wart/shroomlight default
+# to 0; all other unlisted blocks default to 1. Unbreaking is rolled per damage point.
 block-damages:
   logs:
     damage: 1
@@ -82,11 +85,16 @@ block-damages:
 # Groups — add as many custom sections as you want
 # ---------------------------------------------------------------------------
 # Each entry under "groups:" is its own tree-cap rule set. The name is only a
-# label for you (e.g. Trees, Mushrooms, CustomOres); it is not shown in-game.
+# label for you (e.g. Trees, stone, iron, Mushrooms); it is not shown in-game.
 #
-# When a player breaks a block listed in a group, connected blocks in that
+# When a player breaks a block with a listed tool, connected blocks in that
 # same group are broken together (flood-fill). Blocks in different groups
 # never chain into each other.
+#
+# Group selection (need-tool: true):
+#   First group that lists BOTH the broken block AND the held tool wins.
+#   The same block may appear in multiple groups with different tools
+#   (e.g. stone axe = oak/birch only; iron axe = oak + dark oak + jungle).
 #
 # Required per group:
 #   blocks  — list of block IDs (see formats below)
@@ -101,20 +109,31 @@ block-damages:
 #   oak_log
 #   OAK_LOG
 #
-# Example — copy this template and change the name, blocks, and tools:
+# Example — tool tiers with overlapping woods:
 #
-#   MyCustomGroup:
-#     max-chain: 250
-#     search-radius: 1
+#   stone:
 #     blocks:
-#       - minecraft:bamboo_block
-#       - minecraft:bamboo
+#       - minecraft:oak_log
+#       - minecraft:oak_leaves
+#       - minecraft:birch_log
+#       - minecraft:birch_leaves
+#     tools:
+#       - minecraft:stone_axe
+#   iron:
+#     blocks:
+#       - minecraft:oak_log
+#       - minecraft:oak_leaves
+#       - minecraft:birch_log
+#       - minecraft:birch_leaves
+#       - minecraft:dark_oak_log
+#       - minecraft:dark_oak_leaves
 #     tools:
 #       - minecraft:iron_axe
-#       - minecraft:diamond_axe
 #
 # After editing, run /tc reload (or restart the server).
 # Unknown block names on older Minecraft versions are skipped with a warning.
+# Your groups section is never overwritten by the jar defaults — remove or
+# rename Trees / Other freely; /tc reload will not put them back.
 # ---------------------------------------------------------------------------
 
 groups:

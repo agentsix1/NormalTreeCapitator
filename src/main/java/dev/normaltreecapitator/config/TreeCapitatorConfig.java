@@ -41,7 +41,6 @@ public final class TreeCapitatorConfig {
     private int asyncDelay = 1;
 
     private List<TreeBlockGroup> groups = List.of();
-    private Map<Material, TreeBlockGroup> blockToGroup = Map.of();
     private Set<Material> treeBlocks = EnumSet.noneOf(Material.class);
     private Set<Material> treeTools = EnumSet.noneOf(Material.class);
     private Map<Material, Integer> blockDamages = Map.of();
@@ -61,6 +60,11 @@ public final class TreeCapitatorConfig {
                 YamlConfiguration embedded = YamlConfiguration.loadConfiguration(
                         new java.io.InputStreamReader(defaults)
                 );
+                // groups + block-damages are fully user-owned. Keep them out of
+                // defaults so removing / renaming sections is not undone by
+                // copyDefaults + save on reload.
+                embedded.set("groups", null);
+                embedded.set("block-damages", null);
                 yaml.setDefaults(embedded);
                 yaml.options().copyDefaults(true);
             }
@@ -92,12 +96,9 @@ public final class TreeCapitatorConfig {
             asyncDelay = Math.max(0, settings.getInt("async-delay", asyncDelay));
         }
 
-        ConfigurationSection damageSection = yaml.getConfigurationSection("block-damages");
-        if (damageSection == null && yaml.getDefaults() != null) {
-            damageSection = yaml.getDefaults().getConfigurationSection("block-damages");
-        }
-        blockDamages = parseBlockDamages(damageSection);
-
+        // Only entries written in the player's config.yml (never jar defaults).
+        // Missing section / unlisted blocks fall back to defaultBlockDamage().
+        blockDamages = parseBlockDamages(yaml.getConfigurationSection("block-damages"));
         groups = parseGroups(yaml.getConfigurationSection("groups"));
         rebuildCaches();
 
@@ -119,7 +120,12 @@ public final class TreeCapitatorConfig {
         if (section == null) {
             return Map.of();
         }
+        // Section names are arbitrary labels (logs, leaves, mushrooms, …).
         for (String groupId : section.getKeys(false)) {
+            // Skip keys that exist only via defaults (should not happen for block-damages).
+            if (!section.isSet(groupId)) {
+                continue;
+            }
             ConfigurationSection group = section.getConfigurationSection(groupId);
             if (group == null) {
                 continue;
@@ -143,6 +149,9 @@ public final class TreeCapitatorConfig {
             return List.of();
         }
         for (String groupId : section.getKeys(false)) {
+            if (!section.isSet(groupId)) {
+                continue;
+            }
             ConfigurationSection group = section.getConfigurationSection(groupId);
             if (group == null) {
                 continue;
@@ -159,19 +168,14 @@ public final class TreeCapitatorConfig {
     }
 
     private void rebuildCaches() {
-        Map<Material, TreeBlockGroup> index = new HashMap<>();
         Set<Material> blockSet = EnumSet.noneOf(Material.class);
         Set<Material> toolSet = EnumSet.noneOf(Material.class);
 
         for (TreeBlockGroup group : groups) {
-            for (Material block : group.blocks()) {
-                index.putIfAbsent(block, group);
-            }
             blockSet.addAll(group.blocks());
             toolSet.addAll(group.tools());
         }
 
-        blockToGroup = Map.copyOf(index);
         treeBlocks = Set.copyOf(blockSet);
         treeTools = Set.copyOf(toolSet);
     }
@@ -227,8 +231,26 @@ public final class TreeCapitatorConfig {
         return Math.max(1, Math.min(5, radius));
     }
 
-    public TreeBlockGroup groupFor(Material block) {
-        return blockToGroup.get(block);
+    /**
+     * Picks the group for a broken block and held tool.
+     * <p>
+     * When {@code need-tool} is true, the first group that lists both the block and the tool wins.
+     * The same block may appear in multiple groups (e.g. stone-tier vs iron-tier woods).
+     * When {@code need-tool} is false, the first group that lists the block wins.
+     */
+    public TreeBlockGroup groupFor(Material block, Material tool) {
+        if (block == null) {
+            return null;
+        }
+        for (TreeBlockGroup group : groups) {
+            if (!group.matchesBlock(block)) {
+                continue;
+            }
+            if (!needTool || group.allowsTool(tool)) {
+                return group;
+            }
+        }
+        return null;
     }
 
     public boolean isTreeBlock(Material material) {

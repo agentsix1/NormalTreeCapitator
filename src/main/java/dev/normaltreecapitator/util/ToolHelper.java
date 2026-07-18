@@ -1,6 +1,7 @@
 package dev.normaltreecapitator.util;
 
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -80,7 +81,8 @@ public final class ToolHelper {
         }
 
         Random random = ThreadLocalRandom.current();
-        int unbreaking = tool.getEnchantmentLevel(Enchantment.UNBREAKING);
+        Enchantment unbreakingEnchant = Enchantment.getByKey(NamespacedKey.minecraft("unbreaking"));
+        int unbreaking = unbreakingEnchant != null ? tool.getEnchantmentLevel(unbreakingEnchant) : 0;
         int damage = damageable.getDamage();
         for (int i = 0; i < amount; i++) {
             if (unbreaking > 0 && random.nextInt(unbreaking + 1) != 0) {

@@ -1,11 +1,13 @@
 package dev.normaltreecapitator.update;
 
 import dev.normaltreecapitator.NormalTreeCapitator;
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -19,46 +21,89 @@ public final class UpdateNotifier implements Listener {
     private static final long THREE_HOURS_TICKS = 20L * 60L * 60L * 3L;
 
     private final NormalTreeCapitator plugin;
-    private final ModrinthVersionFetcher fetcher;
-    private final AtomicReference<String> latestVersion = new AtomicReference<>();
+    private final PastebinVersionFetcher fetcher;
+    private final AtomicReference<RemoteVersionInfo> latest = new AtomicReference<>();
 
     public UpdateNotifier(NormalTreeCapitator plugin) {
         this.plugin = plugin;
-        this.fetcher = new ModrinthVersionFetcher(plugin);
+        this.fetcher = new PastebinVersionFetcher(plugin);
     }
 
     public void start() {
-        refreshLatestVersion();
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getScheduler().runAsync(() -> {
+            refreshLatestVersion();
+            plugin.getScheduler().runGlobal(() -> {
+                logOutdatedToConsole();
+                notifyOnlineStaff();
+            });
+        });
         plugin.getScheduler().runGlobalRepeating(this::onPeriodicCheck, THREE_HOURS_TICKS);
+    }
+
+    public Optional<RemoteVersionInfo> latest() {
+        return Optional.ofNullable(latest.get());
+    }
+
+    public String localVersion() {
+        return plugin.getDescription().getVersion();
+    }
+
+    public boolean isOutdated(RemoteVersionInfo remote) {
+        return remote != null && VersionComparer.isRemoteNewer(remote.version(), localVersion());
+    }
+
+    public void sendVersionReport(CommandSender sender) {
+        String local = localVersion();
+        plugin.getScheduler().runAsync(() -> {
+            refreshLatestVersion();
+            Optional<RemoteVersionInfo> remoteOpt = latest();
+            plugin.getScheduler().runGlobal(() -> {
+                if (sender instanceof Player player && !player.isOnline()) {
+                    return;
+                }
+                Audience audience = sender;
+                audience.sendMessage(Component.text("NormalTreeCapitator ", NamedTextColor.GREEN)
+                        .append(Component.text(local, NamedTextColor.WHITE)));
+                remoteOpt.ifPresentOrElse(remote -> {
+                    if (isOutdated(remote)) {
+                        audience.sendMessage(buildUpdateMessage(remote));
+                    } else {
+                        audience.sendMessage(Component.text(
+                                "You are running the latest version.", NamedTextColor.GRAY));
+                    }
+                }, () -> audience.sendMessage(Component.text(
+                        "Could not check for updates right now.", NamedTextColor.GRAY)));
+            });
+        });
     }
 
     private void onPeriodicCheck() {
         plugin.getScheduler().runAsync(() -> {
             refreshLatestVersion();
-            plugin.getScheduler().runGlobal(this::notifyOnlineOperators);
+            plugin.getScheduler().runGlobal(this::notifyOnlineStaff);
         });
     }
 
     private void refreshLatestVersion() {
-        Optional<String> remote = fetcher.fetchLatestRelease();
-        remote.ifPresent(latestVersion::set);
+        Optional<RemoteVersionInfo> remote = fetcher.fetchLatestRelease();
+        remote.ifPresent(latest::set);
         if (remote.isEmpty()) {
-            plugin.getLogger().fine("Modrinth version check skipped or unavailable.");
+            plugin.getLogger().fine("Pastebin version check skipped or unavailable.");
         }
     }
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        if (!player.isOp()) {
+        if (!isUpdateNotifyTarget(player)) {
             return;
         }
         plugin.getScheduler().runOnEntityLater(player, () -> {
             if (!player.isOnline()) {
                 return;
             }
-            if (latestVersion.get() == null) {
+            if (latest.get() == null) {
                 plugin.getScheduler().runAsync(() -> {
                     refreshLatestVersion();
                     plugin.getScheduler().runOnEntity(player, () -> notifyIfOutdated(player));
@@ -69,36 +114,48 @@ public final class UpdateNotifier implements Listener {
         }, 40L);
     }
 
-    private void notifyOnlineOperators() {
+    private void notifyOnlineStaff() {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.isOp()) {
-                notifyIfOutdated(player);
-            }
+            notifyIfOutdated(player);
         }
+    }
+
+    private void logOutdatedToConsole() {
+        RemoteVersionInfo remote = latest.get();
+        if (!isOutdated(remote)) {
+            return;
+        }
+        plugin.getLogger().warning(
+                "A newer NormalTreeCapitator is available: " + remote.version()
+                        + " (running " + localVersion() + "). Download: " + remote.downloadUrl()
+        );
     }
 
     private void notifyIfOutdated(Player player) {
-        if (!player.isOp()) {
+        if (!isUpdateNotifyTarget(player)) {
             return;
         }
-        String remote = latestVersion.get();
-        if (remote == null || remote.isBlank()) {
+        RemoteVersionInfo remote = latest.get();
+        if (!isOutdated(remote)) {
             return;
         }
-        String local = plugin.getDescription().getVersion();
-        if (!VersionComparer.isRemoteNewer(remote, local)) {
-            return;
-        }
-        player.sendMessage(buildUpdateMessage());
+        player.sendMessage(buildUpdateMessage(remote));
     }
 
-    static Component buildUpdateMessage() {
-        String url = ModrinthVersionFetcher.CHANGELOG_URL;
-        return Component.text("There is a newer version of Normal Tree Capitator available. ")
+    static boolean isUpdateNotifyTarget(Player player) {
+        return player.isOp() || player.hasPermission("normaltreecapitator.admin");
+    }
+
+    static Component buildUpdateMessage(RemoteVersionInfo remote) {
+        String url = remote.downloadUrl();
+        String remoteVersion = remote.version();
+        return Component.text("There is a newer version of Normal Tree Capitator available (", NamedTextColor.YELLOW)
+                .append(Component.text(remoteVersion, NamedTextColor.GOLD))
+                .append(Component.text("). ", NamedTextColor.YELLOW))
                 .append(link("[Click Here]", url))
-                .append(Component.text(" or visit "))
+                .append(Component.text(" or visit ", NamedTextColor.YELLOW))
                 .append(link(url, url))
-                .append(Component.text(" to get the latest version"));
+                .append(Component.text(" to get the latest version.", NamedTextColor.YELLOW));
     }
 
     private static Component link(String text, String url) {

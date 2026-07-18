@@ -41,6 +41,11 @@ final class VersionComparer {
         if (buildIndex >= 0) {
             trimmed = trimmed.substring(0, buildIndex).trim();
         }
+        if (trimmed.length() >= 2
+                && (trimmed.charAt(0) == 'v' || trimmed.charAt(0) == 'V')
+                && Character.isDigit(trimmed.charAt(1))) {
+            trimmed = trimmed.substring(1);
+        }
         Matcher matcher = STRIP_SUFFIX.matcher(trimmed);
         if (matcher.find()) {
             return matcher.replaceFirst("");

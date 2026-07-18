@@ -11,15 +11,28 @@ This document is the full reference for the plugin: commands, permissions, every
 **Discord:** [Normal Survival](https://discord.normalsurvival.com)  
 **Issues:** [GitHub Issues](https://github.com/agentsix1/NormalTreeCapitator/issues)
 
+### Downloads
+
+| Source | Link |
+|--------|------|
+| **Modrinth** (recommended) | [modrinth.com/plugin/normal-tree-capitator](https://modrinth.com/plugin/normal-tree-capitator/versions) |
+| **GitHub** | [github.com/agentsix1/NormalTreeCapitator](https://github.com/agentsix1/NormalTreeCapitator) |
+| **Version feed** | [Pastebin raw](https://pastebin.com/raw/nc6CbGem) (`version\|download url` — used by in-game update checks) |
+| **Changelog** | [1.0.3.md](1.0.3.md) |
+
+Current release: **1.0.3**
+
 ---
 
 ## Table of contents
 
 - [Overview](#overview)
+- [What's new in 1.0.3](#whats-new-in-103)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Commands](#commands)
+  - [Update checks](#update-checks)
 - [Permissions](#permissions)
 - [Configuration reference](#configuration-reference)
   - [File locations](#file-locations)
@@ -44,6 +57,8 @@ This document is the full reference for the plugin: commands, permissions, every
 - [Building from source](#building-from-source)
 - [Troubleshooting](#troubleshooting)
 - [Metrics](#metrics)
+- [Changelog](#changelog)
+- [Links](#links)
 
 ---
 
@@ -62,9 +77,27 @@ Key design goals:
 | **Folia-safe** | Block reads and breaks run on the correct region thread; no sync chunk loads across regions. |
 | **TPS-friendly** | Large chains break in timed **waves** instead of all at once. |
 | **Flexible** | Unlimited YAML **groups** — trees, mushrooms, bamboo, or anything you define. |
+| **Tool tiers** | Same woods can live in multiple groups; the held tool picks which chain runs. |
 | **Player choice** | Per-player toggle saved to disk. |
 | **Claim-aware** | Each block fires a break check; protected blocks are skipped, the rest still break. |
-| **Fair replant** | Optional auto-replant after the full tree is down, with correct sapling/fungus per species. |
+| **Fair replant** | Optional auto-replant after the full tree is down, with sapling top-up when foliage costs 0 durability. |
+| **Update alerts** | Ops / admins get a clickable download link when a newer release is published. |
+
+---
+
+## What's new in 1.0.3
+
+Full notes: **[1.0.3.md](1.0.3.md)**
+
+| Feature | Summary |
+|---------|---------|
+| **Tool-aware groups** | Group is chosen by block **and** held tool. Overlapping woods across tiers (stone vs iron) work as expected. |
+| **Config ownership** | Your `groups:` and `block-damages:` are never restored from the jar on `/tc reload`. |
+| **Custom damage sections** | Any named section under `block-damages` (`logs`, `mushrooms`, `heavy_logs`, …). |
+| **Low-durability replant** | With `break-tool: false`, 0-cost foliage still breaks after the log budget; missing saplings are topped up when foliage damage is 0. |
+| **`/normaltreecap` alias** | Same command as `/tc` / `/treecap` / `/treecapitator`. |
+| **`/tc version`** | Shows installed version; if outdated, shows a clickable download URL. |
+| **Pastebin update feed** | Staff notified on enable, join, and every 3 hours when behind. |
 
 ---
 
@@ -82,8 +115,8 @@ Key design goals:
 
 ## Installation
 
-1. Download `NormalTreeCapitator-1.0.2.jar` (or build from source).
-2. Place it in your server's `plugins/` folder.
+1. Download **1.0.3** from [Modrinth](https://modrinth.com/plugin/normal-tree-capitator/versions) (or [GitHub](https://github.com/agentsix1/NormalTreeCapitator), or [build from source](#building-from-source)).
+2. Place `NormalTreeCapitator-1.0.3.jar` in your server's `plugins/` folder.
 3. Start or restart the server.
 4. Edit `plugins/NormalTreeCapitator/config.yml` and `messages.yml` if needed.
 5. Run `/tc reload` to apply config/message changes without a restart.
@@ -130,11 +163,12 @@ If `must-sneak: true` (shipped default), players must **hold sneak** while break
 ## Commands
 
 Primary command: **`/tc`**  
-Aliases: `/treecapitator`, `/treecap`
+Aliases: `/treecapitator`, `/treecap`, `/normaltreecap`
 
 | Command | Permission | Description |
 |---------|------------|-------------|
 | `/tc help` | `normaltreecapitator.help` | List available subcommands |
+| `/tc version` | — | Show installed version; if outdated, show a clickable download link ([Pastebin version feed](https://pastebin.com/raw/nc6CbGem)) |
 | `/tc toggle` | `normaltreecapitator.toggle` | Toggle tree capitator for yourself |
 | `/tc toggle <player>` | `normaltreecapitator.toggle.others` | Toggle for another online player |
 | `/tc reload` | `normaltreecapitator.reload` | Reload `config.yml` and `messages.yml` |
@@ -143,10 +177,22 @@ Aliases: `/treecapitator`, `/treecap`
 
 ```
 /tc help
+/normaltreecap version
 /tc toggle
 /tc toggle Steve
 /tc reload
 ```
+
+### Update checks
+
+The plugin reads the latest release from [Pastebin raw](https://pastebin.com/raw/nc6CbGem) (`version|download url`).
+
+| When | Who is notified |
+|------|-----------------|
+| Plugin enable | Console warning + online ops / `normaltreecapitator.admin` |
+| Player join | Ops and players with `normaltreecapitator.admin` |
+| `/tc version` | Whoever ran the command (current version + clickable link if outdated) |
+| Every 3 hours | Online ops / admin permission |
 
 ---
 
@@ -159,7 +205,7 @@ Aliases: `/treecapitator`, `/treecap`
 | `normaltreecapitator.toggle` | `true` | Use `/tc toggle` for yourself |
 | `normaltreecapitator.toggle.others` | `false` | Use `/tc toggle <player>` |
 | `normaltreecapitator.reload` | `false` | Use `/tc reload` |
-| `normaltreecapitator.admin` | `false` | Break saplings protected by `invincible-replant` |
+| `normaltreecapitator.admin` | `false` | Break saplings protected by `invincible-replant`; also receive outdated-version alerts on join |
 | `normaltreecapitator.help` | `true` | View `/tc help` |
 
 **LuckPerms examples**
@@ -510,12 +556,13 @@ Defines how much **durability** each block type costs when `damage-tool: true`.
 
 | Concept | Detail |
 |---------|--------|
-| **Structure** | Named sections (`logs`, `leaves`, or any label you choose) with `damage:` and a `blocks:` list |
+| **Structure** | Any number of named sections — labels are yours (`logs`, `leaves`, `mushrooms`, `heavy_logs`, …). Each needs `damage:` and a `blocks:` list |
 | **damage** | Integer ≥ `0` — durability points lost per block broken |
 | **Unlisted blocks** | Leaves, nether wart blocks, and shroomlight default to **0**; everything else defaults to **1** |
 | **Unbreaking** | Rolled **per damage point**, same as vanilla |
+| **Reload** | Your `block-damages:` section is never restored from the jar — deleting `logs` / renaming sections sticks after `/tc reload` |
 
-**Example — make all leaves free but logs cost 2:**
+**Example — custom section names and costs:**
 
 ```yaml
 block-damages:
@@ -529,6 +576,12 @@ block-damages:
     blocks:
       - minecraft:oak_leaves
       - minecraft:spruce_leaves
+  mushrooms:
+    damage: 1
+    blocks:
+      - minecraft:mushroom_stem
+      - minecraft:brown_mushroom_block
+      - minecraft:red_mushroom_block
 ```
 
 When `break-tool: false`, the plugin stops the chain once the axe would drop below 1 durability, accounting for these costs in order (trunks first — see [How it works](#how-it-works)).
@@ -563,8 +616,9 @@ groups:
 
 1. **Same group only** — breaking oak log chains into oak leaves **only if both are in the same group's `blocks` list**.
 2. **Different groups never chain** — `Trees` and `Other` (mushrooms) stay separate by default.
-3. **Group names are labels** — not shown to players; use any YAML key you like (`Trees`, `Mushrooms`, `Bamboo`, etc.).
-4. **First match wins** — if a block appears in multiple groups, the first group loaded owns it in the internal index (avoid duplicate block entries across groups).
+3. **Group names are labels** — not shown to players; use any YAML key you like (`Trees`, `stone`, `iron`, `Mushrooms`, `Bamboo`, etc.).
+4. **Tool + block select the group** — with `need-tool: true`, the first group that lists **both** the broken block and the held tool is used. The same block may appear in multiple groups with different tools (e.g. stone axe for oak/birch only; iron axe for oak + dark oak).
+5. **If `need-tool: false`** — the first group that lists the broken block wins (tool lists are ignored for selection).
 
 #### Default groups
 
@@ -595,11 +649,43 @@ groups:
       - minecraft:netherite_axe
 ```
 
+#### Tool tiers (overlapping blocks)
+
+List the same woods in more than one group, with different `tools`. The held axe picks which group (and therefore which chain) applies:
+
+```yaml
+groups:
+  stone:
+    blocks:
+      - minecraft:oak_log
+      - minecraft:oak_leaves
+      - minecraft:birch_log
+      - minecraft:birch_leaves
+    tools:
+      - minecraft:stone_axe
+  iron:
+    blocks:
+      - minecraft:oak_log
+      - minecraft:oak_leaves
+      - minecraft:birch_log
+      - minecraft:birch_leaves
+      - minecraft:dark_oak_log
+      - minecraft:dark_oak_leaves
+      - minecraft:jungle_log
+      - minecraft:jungle_leaves
+    tools:
+      - minecraft:iron_axe
+```
+
+With an iron axe, breaking oak uses the `iron` group and can chain into dark oak. With a stone axe, the same oak only chains oak/birch.
+
 **Tips**
 
 - Keep mushrooms in their own group if you don't want them chaining with normal trees.
 - Use a higher `search-radius` only when blocks in your build are intentionally spaced apart.
 - Set a lower `max-chain` on groups that should cap smaller (e.g. bamboo farms).
+- Do not put the same tool on two groups that both contain the same block — the first matching group in the file wins.
+- Your `groups:` section is never restored from the jar on reload — deleting or renaming `Trees` / `Other` is permanent until you add them back yourself.
 
 After editing, run `/tc reload`.
 
@@ -677,13 +763,13 @@ When a player breaks a block, the plugin runs these checks **in order**:
 
 1. Block is not already being broken by tree cap (anti-recursion).
 2. Game mode is Survival or Adventure.
-3. Block belongs to a configured **group**.
+3. A configured **group** matches the broken block and held tool (`need-tool` + group's `tools` list).
 4. Player has `normaltreecapitator.use`.
 5. Player has tree cap **enabled** (toggle / default).
 6. Invincible replant protection (if breaking a protected sapling).
 7. **Sneak gate** passes (`must-sneak`).
 8. Not on **cooldown** (`cooldown-ticks`).
-9. **Tool** is valid (`need-tool` + group's `tools` list + axe usable).
+9. **Tool** is usable (axe durability / `break-tool` when `need-tool` is true).
 10. Flood fill finds at least one block after **durability budget** trim.
 
 If all pass, the original break is cancelled and the chain runs.
@@ -739,7 +825,7 @@ Species does **not** affect connectivity — only whether blocks share the same 
 - Applied **per block** as it breaks (not all upfront).
 - Cost per block from [block-damages](#block-damages) (default 1 for logs, 0 for leaves).
 - **Unbreaking** enchantment rolled per damage point.
-- If `break-tool: false`, chain stops before the axe would break (keeps 1 durability).
+- If `break-tool: false`, costly blocks (logs) are capped so the axe keeps 1 durability; **0-cost** blocks (usually leaves) are still broken afterward so saplings can drop / replant can run.
 
 ---
 
@@ -750,8 +836,11 @@ When `replant: true`:
 1. **During break** — each log records position, species, ground validity, and expected sapling.
 2. **After all blocks break** — lowest log per column becomes a stump candidate.
 3. **2×2 expansion** — dark oak / multi-column bases add sibling corners when those columns were broken.
-4. **One tick later** — saplings planted at each stump on that block's region thread.
-5. **Consumption** — if `replant-consume-saplings: true`, one matching sapling removed from drops per plant.
+4. **Sapling top-up** — if `replant-consume-saplings: true` and that species' foliage costs **0** durability in `block-damages`, missing saplings are added to the drop pool so each stump can replant (covers low-durability axes that still clear the logs). If foliage costs **more than 0**, no free saplings are granted.
+5. **One tick later** — saplings planted at each stump on that block's region thread.
+6. **Consumption** — if `replant-consume-saplings: true`, one matching sapling removed from drops per plant.
+
+With `break-tool: false`, zero-cost foliage is still included in the chain after the durability budget runs out on logs, so leaves can drop naturally when they do not cost durability.
 
 Supported replant types include overworld saplings, mangrove propagules, crimson/warped fungus, and pale oak where the server version supports it.
 
@@ -811,12 +900,12 @@ mvn clean package
 **Output:**
 
 ```
-target/NormalTreeCapitator-1.0.2.jar
+target/NormalTreeCapitator-1.0.3.jar
 ```
 
 The JAR is shaded (bStats relocated). No extra libraries needed at runtime.
 
-The built plugin version string appears in `/plugins` as e.g. `1.0.2 Build 3` (build number auto-increments each package).
+The built plugin version string appears in `/plugins` as e.g. `1.0.3 Build 3` (build number auto-increments each package).
 
 ---
 
@@ -847,9 +936,9 @@ The built plugin version string appears in `/plugins` as e.g. `1.0.2 Build 3` (b
 ### Replant not working
 
 - **`replant: false`** in config.
-- **`replant-consume-saplings: true`** but no saplings in drops — enable debug and look for `no-sapling-in-drops`.
+- **`replant-consume-saplings: true`** but no saplings in drops — with foliage damage **0**, 1.0.3+ tops up saplings automatically; if foliage costs **> 0**, no free saplings are granted.
 - Ground under stump not valid (mid-tree logs don't replant).
-- Enable **`debug: true`** and search for `REPLANT` lines.
+- Enable **`debug: true`** and search for `REPLANT` / `SAPLING TOP-UP` lines.
 
 ### Unknown block warnings on startup
 
@@ -859,6 +948,7 @@ The built plugin version string appears in `/plugins` as e.g. `1.0.2 Build 3` (b
 
 - Run **`/tc reload`** or restart.
 - Edit **`plugins/NormalTreeCapitator/config.yml`**, not the JAR copy.
+- `groups` and `block-damages` are never overwritten by jar defaults — if a section is missing, add it yourself (it will not regenerate).
 
 ### Lag on huge trees
 
@@ -887,11 +977,24 @@ This plugin includes [bStats](https://bstats.org/) for **anonymous** usage stati
 
 ---
 
+## Changelog
+
+| Version | Notes |
+|---------|--------|
+| **1.0.3** | Tool-aware groups, config ownership for `groups` / `block-damages`, sapling top-up for free foliage, `/normaltreecap version`, Pastebin update alerts — see **[1.0.3.md](1.0.3.md)** |
+| **1.0.2** | Prior stable release |
+
+---
+
 ## Links
 
-- **GitHub:** https://github.com/agentsix1/NormalTreeCapitator
-- **Discord:** https://discord.normalsurvival.com
-- **Issues:** https://github.com/agentsix1/NormalTreeCapitator/issues
+| | |
+|--|--|
+| **Download (Modrinth)** | https://modrinth.com/plugin/normal-tree-capitator/versions |
+| **GitHub** | https://github.com/agentsix1/NormalTreeCapitator |
+| **Version feed** | https://pastebin.com/raw/nc6CbGem |
+| **Discord** | https://discord.normalsurvival.com |
+| **Issues** | https://github.com/agentsix1/NormalTreeCapitator/issues |
 
 ---
 
