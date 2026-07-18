@@ -65,84 +65,6 @@ public final class TreeReplant {
         }
     }
 
-    /**
-     * Foliage block used to decide whether free saplings may be granted for replant.
-     * Returns null when there is no known leaf/wart counterpart.
-     */
-    public static Material foliageForLog(Material logType) {
-        if (logType == null) {
-            return null;
-        }
-        String family = treeFamily(logType);
-        return switch (family) {
-            case "OAK" -> Material.OAK_LEAVES;
-            case "SPRUCE" -> Material.SPRUCE_LEAVES;
-            case "BIRCH" -> Material.BIRCH_LEAVES;
-            case "JUNGLE" -> Material.JUNGLE_LEAVES;
-            case "ACACIA" -> Material.ACACIA_LEAVES;
-            case "DARK_OAK" -> Material.DARK_OAK_LEAVES;
-            case "MANGROVE" -> Material.MANGROVE_LEAVES;
-            case "CHERRY" -> Material.CHERRY_LEAVES;
-            case "PALE_OAK" -> mat("PALE_OAK_LEAVES");
-            case "CRIMSON" -> Material.NETHER_WART_BLOCK;
-            case "WARPED" -> Material.WARPED_WART_BLOCK;
-            default -> null;
-        };
-    }
-
-    /**
-     * When foliage costs 0 durability, top up drop saplings so each stump can replant.
-     * When foliage costs durability, do nothing (no free saplings).
-     */
-    public static void ensureSaplingsForFreeFoliage(
-            List<PendingReplant> sites,
-            BulkDropAccumulator accumulator,
-            TreeCapitatorConfig config,
-            boolean consumeFromDrops,
-            Plugin plugin,
-            Player player
-    ) {
-        if (!consumeFromDrops || accumulator == null || config == null || sites == null || sites.isEmpty()) {
-            return;
-        }
-        Map<Material, Integer> needed = new LinkedHashMap<>();
-        for (PendingReplant site : sites) {
-            if (site == null) {
-                continue;
-            }
-            Material sapling = site.expectedSapling() != null
-                    ? site.expectedSapling()
-                    : saplingForLog(site.logType());
-            if (sapling == null) {
-                continue;
-            }
-            Material foliage = foliageForLog(site.logType());
-            if (foliage == null || config.blockDamage(foliage) > 0) {
-                continue;
-            }
-            needed.merge(sapling, 1, Integer::sum);
-        }
-        if (needed.isEmpty()) {
-            return;
-        }
-        List<ItemStack> granted = new ArrayList<>();
-        for (Map.Entry<Material, Integer> entry : needed.entrySet()) {
-            int missing = entry.getValue() - accumulator.countOf(entry.getKey());
-            if (missing <= 0) {
-                continue;
-            }
-            ItemStack stack = new ItemStack(entry.getKey(), missing);
-            granted.add(stack);
-            accumulator.addDrops(List.of(stack));
-        }
-        if (!granted.isEmpty()) {
-            TreeCapLog.info(config, plugin, player,
-                    "REPLANT SAPLING TOP-UP (foliage damage 0) "
-                            + TreeCapLog.formatDrops(granted)
-                            + " " + TreeCapLog.saplingSummary(accumulator));
-        }
-    }
-
     public static String treeFamily(Material material) {
         if (material == null) {
             return "";
@@ -365,7 +287,6 @@ public final class TreeReplant {
             done.run();
             return;
         }
-        ensureSaplingsForFreeFoliage(sites, accumulator, config, consumeFromDrops, plugin, player);
         sites.sort(Comparator.comparingInt(site -> site.location().getBlockY()));
 
         AtomicInteger remaining = new AtomicInteger(sites.size());

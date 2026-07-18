@@ -80,7 +80,7 @@ Key design goals:
 | **Tool tiers** | Same woods can live in multiple groups; the held tool picks which chain runs. |
 | **Player choice** | Per-player toggle saved to disk. |
 | **Claim-aware** | Each block fires a break check; protected blocks are skipped, the rest still break. |
-| **Fair replant** | Optional auto-replant after the full tree is down, with sapling top-up when foliage costs 0 durability. |
+| **Fair replant** | Optional auto-replant from real sapling drops; 0-cost connected leaves still break after a low-durability log budget. |
 | **Update alerts** | Ops / admins get a clickable download link when a newer release is published. |
 
 ---
@@ -94,7 +94,7 @@ Full notes: **[1.0.3.md](1.0.3.md)**
 | **Tool-aware groups** | Group is chosen by block **and** held tool. Overlapping woods across tiers (stone vs iron) work as expected. |
 | **Config ownership** | Your `groups:` and `block-damages:` are never restored from the jar on `/tc reload`. |
 | **Custom damage sections** | Any named section under `block-damages` (`logs`, `mushrooms`, `heavy_logs`, …). |
-| **Low-durability replant** | With `break-tool: false`, 0-cost foliage still breaks after the log budget; missing saplings are topped up when foliage damage is 0. |
+| **Low-durability replant** | With `break-tool: false`, connected 0-cost foliage still breaks after the log budget so leaf drops can feed replant; no free saplings are spawned. |
 | **`/normaltreecap` alias** | Same command as `/tc` / `/treecap` / `/treecapitator`. |
 | **`/tc version`** | Shows installed version; if outdated, shows a clickable download URL. |
 | **Pastebin update feed** | Staff notified on enable, join, and every 3 hours when behind. |
@@ -825,7 +825,7 @@ Species does **not** affect connectivity — only whether blocks share the same 
 - Applied **per block** as it breaks (not all upfront).
 - Cost per block from [block-damages](#block-damages) (default 1 for logs, 0 for leaves).
 - **Unbreaking** enchantment rolled per damage point.
-- If `break-tool: false`, costly blocks (logs) are capped so the axe keeps 1 durability; **0-cost** blocks (usually leaves) are still broken afterward so saplings can drop / replant can run.
+- If `break-tool: false`, costly blocks (logs) are capped so the axe keeps 1 durability; connected **0-cost** foliage matching those logs is still broken afterward so saplings can drop for replant (no free saplings are spawned).
 
 ---
 
@@ -836,11 +836,10 @@ When `replant: true`:
 1. **During break** — each log records position, species, ground validity, and expected sapling.
 2. **After all blocks break** — lowest log per column becomes a stump candidate.
 3. **2×2 expansion** — dark oak / multi-column bases add sibling corners when those columns were broken.
-4. **Sapling top-up** — if `replant-consume-saplings: true` and that species' foliage costs **0** durability in `block-damages`, missing saplings are added to the drop pool so each stump can replant (covers low-durability axes that still clear the logs). If foliage costs **more than 0**, no free saplings are granted.
-5. **One tick later** — saplings planted at each stump on that block's region thread.
-6. **Consumption** — if `replant-consume-saplings: true`, one matching sapling removed from drops per plant.
+4. **One tick later** — saplings planted at each stump on that block's region thread.
+5. **Consumption** — if `replant-consume-saplings: true`, one matching sapling removed from **real** tree drops per plant. No sapling in drops → that stump is skipped.
 
-With `break-tool: false`, zero-cost foliage is still included in the chain after the durability budget runs out on logs, so leaves can drop naturally when they do not cost durability.
+With `break-tool: false`, connected foliage that costs **0** durability is still broken after the log budget runs out (matching the cut tree families), so leaves can drop saplings for replant. Foliage that costs durability is not broken past the budget. No connected leaves → no leaf drops → no replant for those stumps when consume-saplings is on.
 
 Supported replant types include overworld saplings, mangrove propagules, crimson/warped fungus, and pale oak where the server version supports it.
 
@@ -936,9 +935,9 @@ The built plugin version string appears in `/plugins` as e.g. `1.0.3 Build 3` (b
 ### Replant not working
 
 - **`replant: false`** in config.
-- **`replant-consume-saplings: true`** but no saplings in drops — with foliage damage **0**, 1.0.3+ tops up saplings automatically; if foliage costs **> 0**, no free saplings are granted.
+- **`replant-consume-saplings: true`** but no saplings in drops — need connected 0-cost leaves broken so saplings can drop; foliage that costs durability will not be broken past the axe budget.
 - Ground under stump not valid (mid-tree logs don't replant).
-- Enable **`debug: true`** and search for `REPLANT` / `SAPLING TOP-UP` lines.
+- Enable **`debug: true`** and search for `REPLANT` / `no-sapling-in-drops` lines.
 
 ### Unknown block warnings on startup
 
