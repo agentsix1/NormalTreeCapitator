@@ -14,30 +14,44 @@ commands:
 
 permissions:
   normaltreecapitator.*:
-    description: Gives access to all NormalTreeCapitator commands.
+    description: Gives access to every NormalTreeCapitator permission.
     default: op
     children:
       normaltreecapitator.admin: true
+      normaltreecapitator.user: true
+
+  normaltreecapitator.user:
+    description: All basic player permissions (use, toggle, help).
+    default: true
+    children:
       normaltreecapitator.use: true
       normaltreecapitator.toggle: true
-      normaltreecapitator.toggle.others: true
-      normaltreecapitator.reload: true
       normaltreecapitator.help: true
+
+  normaltreecapitator.admin:
+    description: All admin permissions (status, reload, toggle others, protected saplings, update alerts).
+    default: op
+    children:
+      normaltreecapitator.admin.status: true
+      normaltreecapitator.admin.reload: true
+      normaltreecapitator.admin.toggle.others: true
+
   normaltreecapitator.use:
-    description: Allows tree capitator
+    description: Allows tree capitator when breaking blocks
     default: true
   normaltreecapitator.toggle:
     description: Toggle tree capitator for yourself
     default: true
-  normaltreecapitator.toggle.others:
-    description: Toggle tree capitator for other players
-    default: false
-  normaltreecapitator.reload:
-    description: Reload config files
-    default: false
-  normaltreecapitator.admin:
-    description: Break protected replanted saplings
-    default: false
   normaltreecapitator.help:
     description: View tree capitator help
     default: true
+
+  normaltreecapitator.admin.status:
+    description: View tree capitator toggle status for yourself or any player
+    default: op
+  normaltreecapitator.admin.reload:
+    description: Reload config files
+    default: op
+  normaltreecapitator.admin.toggle.others:
+    description: Toggle tree capitator for other players
+    default: op

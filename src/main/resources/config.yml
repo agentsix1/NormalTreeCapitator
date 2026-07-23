@@ -37,6 +37,10 @@ settings:
 # This section is never overwritten by jar defaults on /tc reload.
 # Listed blocks use that section's damage. Unlisted leaves/wart/shroomlight default
 # to 0; all other unlisted blocks default to 1. Unbreaking is rolled per damage point.
+#
+# Optional permission: vip → normaltreecapitator.damage.vip
+# Players with that permission use this section instead of an open section for the
+# same blocks (e.g. logsvip damage 1 overrides logs damage 2 for VIP).
 block-damages:
   logs:
     damage: 1
@@ -63,7 +67,7 @@ block-damages:
       - minecraft:pale_oak_wood
       - minecraft:crimson_hyphae
       - minecraft:warped_hyphae
-  leaves:
+
     damage: 0
     blocks:
       - minecraft:oak_leaves
@@ -103,6 +107,8 @@ block-damages:
 # Optional per group (falls back to "settings" above if omitted):
 #   max-chain      — max blocks broken in one chain (-1 = unlimited)
 #   search-radius  — how far to look for the next connected block (1–5)
+#   permission     — vip → normaltreecapitator.group.vip (gated groups preferred
+#                    over open groups when the player has the permission)
 #
 # Block name formats (all work):
 #   minecraft:oak_log

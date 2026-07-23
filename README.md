@@ -18,15 +18,17 @@ This document is the full reference for the plugin: commands, permissions, every
 | **Modrinth** (recommended) | [modrinth.com/plugin/normal-tree-capitator](https://modrinth.com/plugin/normal-tree-capitator/versions) |
 | **GitHub** | [github.com/agentsix1/NormalTreeCapitator](https://github.com/agentsix1/NormalTreeCapitator) |
 | **Version feed** | [Pastebin raw](https://pastebin.com/raw/nc6CbGem) (`version\|download url` — used by in-game update checks) |
-| **Changelog** | [1.0.3.md](1.0.3.md) |
+| **Changelog** | [1.0.4.md](1.0.4.md) · [1.0.3.md](1.0.3.md) |
 
-Current release: **1.0.3**
+**Current release: [1.0.4](1.0.4.md)** — status command, `user` / `admin.*` permissions, optional group & damage permission gates.
 
 ---
 
 ## Table of contents
 
 - [Overview](#overview)
+- [What's new in 1.0.4](#whats-new-in-104)
+- [Upgrading to 1.0.4](#upgrading-to-104)
 - [What's new in 1.0.3](#whats-new-in-103)
 - [Requirements](#requirements)
 - [Installation](#installation)
@@ -78,12 +80,42 @@ Key design goals:
 | **TPS-friendly** | Large chains break in timed **waves** instead of all at once. |
 | **Flexible** | Unlimited YAML **groups** — trees, mushrooms, bamboo, or anything you define. |
 | **Tool tiers** | Same woods can live in multiple groups; the held tool picks which chain runs. |
-| **Player choice** | Per-player toggle saved to disk. |
+| **Permission tiers** | Optional `permission:` on groups and damage sections (e.g. VIP lower durability / bigger chains). |
+| **Player choice** | Per-player toggle saved to disk; staff can check status online or offline. |
 | **Claim-aware** | Each block fires a break check; protected blocks are skipped, the rest still break. |
 | **Fair replant** | Optional auto-replant from real sapling drops; 0-cost connected leaves still break after a low-durability log budget. |
-| **Update alerts** | Ops / admins get a clickable download link when a newer release is published. |
+| **Update alerts** | Ops / `normaltreecapitator.admin` get a clickable download link when a newer release is published. |
 
 ---
+
+## What's new in 1.0.4
+
+Full notes: **[1.0.4.md](1.0.4.md)**
+
+| Feature | Summary |
+|---------|---------|
+| **`/tc status`** | View your tree capitator toggle state (`normaltreecapitator.admin.status`). |
+| **`/tc status <player>`** | View any player's toggle state — **online or offline**. |
+| **`normaltreecapitator.user`** | One node for all basic player permissions (`use`, `toggle`, `help`). |
+| **`normaltreecapitator.admin.*`** | Admin commands split into `admin.status`, `admin.reload`, `admin.toggle.others`; parent `admin` grants all. |
+| **Group permissions** | Optional `permission: vip` on a group → `normaltreecapitator.group.vip` (gated groups preferred when the player has them). |
+| **Damage permissions** | Optional `permission: vip` on a damage section → `normaltreecapitator.damage.vip` (overrides open damage for the same blocks). |
+
+## Upgrading to 1.0.4
+
+1. Replace the jar with `NormalTreeCapitator-1.0.4.jar` and **restart** the server (new permission nodes).
+2. Update permission plugins if you used the old nodes:
+
+| Old (1.0.3) | New (1.0.4) |
+|-------------|-------------|
+| `normaltreecapitator.reload` | `normaltreecapitator.admin.reload` |
+| `normaltreecapitator.status` | `normaltreecapitator.admin.status` |
+| `normaltreecapitator.toggle.others` | `normaltreecapitator.admin.toggle.others` |
+
+Or grant `normaltreecapitator.admin` / `normaltreecapitator.user` instead of listing children.
+
+3. Run `/tc reload` to merge new message keys into an existing `messages.yml`.
+4. Update the [Pastebin version feed](https://pastebin.com/raw/nc6CbGem) to `v1.0.4|https://modrinth.com/plugin/normal-tree-capitator/versions` when you publish.
 
 ## What's new in 1.0.3
 
@@ -115,8 +147,8 @@ Full notes: **[1.0.3.md](1.0.3.md)**
 
 ## Installation
 
-1. Download **1.0.3** from [Modrinth](https://modrinth.com/plugin/normal-tree-capitator/versions) (or [GitHub](https://github.com/agentsix1/NormalTreeCapitator), or [build from source](#building-from-source)).
-2. Place `NormalTreeCapitator-1.0.3.jar` in your server's `plugins/` folder.
+1. Download **1.0.4** from [Modrinth](https://modrinth.com/plugin/normal-tree-capitator/versions) (or [GitHub](https://github.com/agentsix1/NormalTreeCapitator), or [build from source](#building-from-source)).
+2. Place `NormalTreeCapitator-1.0.4.jar` in your server's `plugins/` folder.
 3. Start or restart the server.
 4. Edit `plugins/NormalTreeCapitator/config.yml` and `messages.yml` if needed.
 5. Run `/tc reload` to apply config/message changes without a restart.
@@ -152,9 +184,10 @@ On load you should see a line like:
 
 **For admins**
 
-1. Ensure players have `normaltreecapitator.use` (default: everyone).
-2. Adjust `must-sneak`, `replant`, and limits in `config.yml`.
-3. Run `/tc reload` after edits.
+1. Players get basics via `normaltreecapitator.user` (default: true). Staff get `normaltreecapitator.admin`.
+2. Adjust `must-sneak`, `replant`, groups, and damage (including optional VIP `permission:`) in `config.yml`.
+3. Run `/tc reload` after YAML edits (restart after jar updates).
+4. Use `/tc status <player>` to check toggle state for online or offline players.
 
 If `must-sneak: true` (shipped default), players must **hold sneak** while breaking to activate tree cap. See [Sneak behavior](#sneak-behavior) for the full matrix.
 
@@ -170,8 +203,10 @@ Aliases: `/treecapitator`, `/treecap`, `/normaltreecap`
 | `/tc help` | `normaltreecapitator.help` | List available subcommands |
 | `/tc version` | — | Show installed version; if outdated, show a clickable download link ([Pastebin version feed](https://pastebin.com/raw/nc6CbGem)) |
 | `/tc toggle` | `normaltreecapitator.toggle` | Toggle tree capitator for yourself |
-| `/tc toggle <player>` | `normaltreecapitator.toggle.others` | Toggle for another online player |
-| `/tc reload` | `normaltreecapitator.reload` | Reload `config.yml` and `messages.yml` |
+| `/tc toggle <player>` | `normaltreecapitator.admin.toggle.others` | Toggle for another online player |
+| `/tc status` | `normaltreecapitator.admin.status` | View your tree capitator toggle state |
+| `/tc status <player>` | `normaltreecapitator.admin.status` | View a player's toggle state — online or offline |
+| `/tc reload` | `normaltreecapitator.admin.reload` | Reload `config.yml` and `messages.yml` |
 
 **Examples**
 
@@ -180,6 +215,8 @@ Aliases: `/treecapitator`, `/treecap`, `/normaltreecap`
 /normaltreecap version
 /tc toggle
 /tc toggle Steve
+/tc status
+/tc status Steve
 /tc reload
 ```
 
@@ -198,23 +235,36 @@ The plugin reads the latest release from [Pastebin raw](https://pastebin.com/raw
 
 ## Permissions
 
+### Packs
+
+| Permission | Default | Includes |
+|------------|---------|----------|
+| `normaltreecapitator.*` | op | `user` + `admin` |
+| `normaltreecapitator.user` | `true` | `use`, `toggle`, `help` |
+| `normaltreecapitator.admin` | op | `admin.status`, `admin.reload`, `admin.toggle.others`, plus protected saplings & update alerts |
+
+### Individual nodes
+
 | Permission | Default | Description |
 |------------|---------|-------------|
-| `normaltreecapitator.*` | op | All permissions below |
 | `normaltreecapitator.use` | `true` | Activate tree capitator when breaking blocks |
 | `normaltreecapitator.toggle` | `true` | Use `/tc toggle` for yourself |
-| `normaltreecapitator.toggle.others` | `false` | Use `/tc toggle <player>` |
-| `normaltreecapitator.reload` | `false` | Use `/tc reload` |
-| `normaltreecapitator.admin` | `false` | Break saplings protected by `invincible-replant`; also receive outdated-version alerts on join |
 | `normaltreecapitator.help` | `true` | View `/tc help` |
+| `normaltreecapitator.admin.status` | op | `/tc status` / `/tc status <player>` |
+| `normaltreecapitator.admin.reload` | op | `/tc reload` |
+| `normaltreecapitator.admin.toggle.others` | op | `/tc toggle <player>` |
+| `normaltreecapitator.group.<name>` | — | From `groups.*.permission` (e.g. `vip` → `normaltreecapitator.group.vip`) |
+| `normaltreecapitator.damage.<name>` | — | From `block-damages.*.permission` (e.g. `vip` → `normaltreecapitator.damage.vip`) |
+
+Config `permission: vip` becomes `normaltreecapitator.group.vip` or `normaltreecapitator.damage.vip`. A value that already contains `.` is used as a full permission node.
 
 **LuckPerms examples**
 
 ```
-/lp group default permission set normaltreecapitator.use true
-/lp group default permission set normaltreecapitator.toggle true
-/lp group staff permission set normaltreecapitator.reload true
-/lp group staff permission set normaltreecapitator.toggle.others true
+/lp group default permission set normaltreecapitator.user true
+/lp group vip permission set normaltreecapitator.group.vip true
+/lp group vip permission set normaltreecapitator.damage.vip true
+/lp group staff permission set normaltreecapitator.admin true
 ```
 
 ---
@@ -222,7 +272,7 @@ The plugin reads the latest release from [Pastebin raw](https://pastebin.com/raw
 ## Configuration reference
 
 **File:** `plugins/NormalTreeCapitator/config.yml`  
-**Reload:** `/tc reload`
+**Reload:** `/tc reload` (requires `normaltreecapitator.admin.reload`)
 
 Block and tool IDs accept any of these formats:
 
@@ -558,30 +608,31 @@ Defines how much **durability** each block type costs when `damage-tool: true`.
 |---------|--------|
 | **Structure** | Any number of named sections — labels are yours (`logs`, `leaves`, `mushrooms`, `heavy_logs`, …). Each needs `damage:` and a `blocks:` list |
 | **damage** | Integer ≥ `0` — durability points lost per block broken |
+| **permission** | Optional. `vip` → `normaltreecapitator.damage.vip`. Gated rules override open rules for the same blocks when the player has the permission |
 | **Unlisted blocks** | Leaves, nether wart blocks, and shroomlight default to **0**; everything else defaults to **1** |
 | **Unbreaking** | Rolled **per damage point**, same as vanilla |
 | **Reload** | Your `block-damages:` section is never restored from the jar — deleting `logs` / renaming sections sticks after `/tc reload` |
 
-**Example — custom section names and costs:**
+**Example — VIP lower durability on the same logs:**
 
 ```yaml
 block-damages:
-  heavy_logs:
+  logs:
     damage: 2
     blocks:
       - minecraft:oak_log
       - minecraft:spruce_log
-  free_leaves:
+  logsvip:
+    permission: vip   # → normaltreecapitator.damage.vip
+    damage: 1
+    blocks:
+      - minecraft:oak_log
+      - minecraft:spruce_log
+  leaves:
     damage: 0
     blocks:
       - minecraft:oak_leaves
       - minecraft:spruce_leaves
-  mushrooms:
-    damage: 1
-    blocks:
-      - minecraft:mushroom_stem
-      - minecraft:brown_mushroom_block
-      - minecraft:red_mushroom_block
 ```
 
 When `break-tool: false`, the plugin stops the chain once the axe would drop below 1 durability, accounting for these costs in order (trunks first — see [How it works](#how-it-works)).
@@ -609,6 +660,7 @@ groups:
 |-------|----------|-------------|
 | `blocks` | **Yes** | Block types that belong to this group and can chain together |
 | `tools` | **Yes** | Items that can activate tree cap for this group (usually axes) |
+| `permission` | No | Optional. `vip` → `normaltreecapitator.group.vip`. Gated groups are preferred when the player has the permission |
 | `max-chain` | No | Overrides global `settings.max-chain` for this group only |
 | `search-radius` | No | Overrides global `settings.search-radius` for this group only |
 
@@ -617,8 +669,8 @@ groups:
 1. **Same group only** — breaking oak log chains into oak leaves **only if both are in the same group's `blocks` list**.
 2. **Different groups never chain** — `Trees` and `Other` (mushrooms) stay separate by default.
 3. **Group names are labels** — not shown to players; use any YAML key you like (`Trees`, `stone`, `iron`, `Mushrooms`, `Bamboo`, etc.).
-4. **Tool + block select the group** — with `need-tool: true`, the first group that lists **both** the broken block and the held tool is used. The same block may appear in multiple groups with different tools (e.g. stone axe for oak/birch only; iron axe for oak + dark oak).
-5. **If `need-tool: false`** — the first group that lists the broken block wins (tool lists are ignored for selection).
+4. **Tool + block + permission select the group** — with `need-tool: true`, a matching group must list the block and tool. Permission-gated groups the player qualifies for win over open groups. The same block may appear in multiple groups with different tools or permissions.
+5. **If `need-tool: false`** — tool lists are ignored for selection; permission gating still applies.
 
 #### Default groups
 
@@ -679,12 +731,27 @@ groups:
 
 With an iron axe, breaking oak uses the `iron` group and can chain into dark oak. With a stone axe, the same oak only chains oak/birch.
 
+#### Permission-gated groups (VIP, ranks, …)
+
+```yaml
+groups:
+  Trees:
+    blocks: [minecraft:oak_log, minecraft:oak_leaves]
+    tools: [minecraft:iron_axe]
+  TreesVip:
+    permission: vip   # → normaltreecapitator.group.vip
+    blocks: [minecraft:oak_log, minecraft:oak_leaves, minecraft:dark_oak_log, minecraft:dark_oak_leaves]
+    tools: [minecraft:iron_axe]
+```
+
+Players with `normaltreecapitator.group.vip` use `TreesVip` when it matches; everyone else falls back to open groups like `Trees`.
+
 **Tips**
 
 - Keep mushrooms in their own group if you don't want them chaining with normal trees.
 - Use a higher `search-radius` only when blocks in your build are intentionally spaced apart.
 - Set a lower `max-chain` on groups that should cap smaller (e.g. bamboo farms).
-- Do not put the same tool on two groups that both contain the same block — the first matching group in the file wins.
+- For tool tiers without permissions, do not put the same tool on two open groups that share a block — gated groups are preferred, then the first open match.
 - Your `groups:` section is never restored from the jar on reload — deleting or renaming `Trees` / `Other` is permanent until you add them back yourself.
 
 After editing, run `/tc reload`.
@@ -694,7 +761,7 @@ After editing, run `/tc reload`.
 ## Messages reference
 
 **File:** `plugins/NormalTreeCapitator/messages.yml`  
-**Reload:** `/tc reload`  
+**Reload:** `/tc reload` (requires `normaltreecapitator.admin.reload`)  
 **Colors:** Standard `&` color codes (e.g. `&a` green, `&c` red)
 
 Every key is prefixed automatically with `prefix` when sent to players.
@@ -704,20 +771,26 @@ Every key is prefixed automatically with `prefix` when sent to players.
 | `prefix` | — | Prepended to all messages |
 | `usage` | `{label}`, `{usage}` | Invalid command syntax |
 | `unknown-subcommand` | `{label}` | Unrecognized subcommand |
-| `no-permission-toggle-others` | — | `/tc toggle <player>` without permission |
-| `player-not-found` | `{player}` | Target not online |
+| `no-permission-toggle-others` | — | `/tc toggle <player>` without `admin.toggle.others` |
+| `no-permission-status` | — | `/tc status` without `admin.status` |
+| `player-not-found` | `{player}` | Target not found (online or offline) |
 | `toggle-self` | `{feature}`, `{state}` | Player toggles themselves |
 | `toggle-other-sender` | `{feature}`, `{state}`, `{target}` | Staff toggles another player (sender view) |
 | `toggle-other-target` | `{feature}`, `{state}`, `{sender}` | Staff toggles another player (target view) |
-| `only-players` | — | Console tries `/tc toggle` without a player arg |
+| `status-self` | `{feature}`, `{state}` | `/tc status` for yourself |
+| `status-other` | `{feature}`, `{state}`, `{target}`, `{presence}` | `/tc status <player>` |
+| `presence-online` / `presence-offline` | — | Inserted into `{presence}` |
+| `only-players` | — | Console uses a self-only command without a player arg |
 | `no-permission` | — | Missing toggle permission |
-| `no-permission-reload` | — | Missing reload permission |
+| `no-permission-reload` | — | Missing `admin.reload` |
 | `reload-success` | — | After `/tc reload` |
 | `help-header` | `{label}` | `/tc help` header line |
 | `help-toggle` | `{label}`, `{feature}` | Help line for toggle |
 | `help-toggle-player` | `{label}` | Help line for toggle others |
+| `help-status` / `help-status-player` | `{label}` | Help lines for status |
 | `help-reload` | `{label}` | Help line for reload |
-| `sapling-protected` | — | Breaking invincible replant without admin perm |
+| `help-version` | `{label}` | Help line for version |
+| `sapling-protected` | — | Breaking invincible replant without `admin` |
 | `feature-treecapitator` | — | Display name in toggle messages |
 | `feature-tree-capitator` | — | Lowercase feature name in help text |
 | `state-enabled` | — | Text shown when feature is on |
@@ -763,14 +836,14 @@ When a player breaks a block, the plugin runs these checks **in order**:
 
 1. Block is not already being broken by tree cap (anti-recursion).
 2. Game mode is Survival or Adventure.
-3. A configured **group** matches the broken block and held tool (`need-tool` + group's `tools` list).
+3. A configured **group** matches the broken block, held tool, and player **group permission** (gated groups preferred).
 4. Player has `normaltreecapitator.use`.
 5. Player has tree cap **enabled** (toggle / default).
 6. Invincible replant protection (if breaking a protected sapling).
 7. **Sneak gate** passes (`must-sneak`).
 8. Not on **cooldown** (`cooldown-ticks`).
 9. **Tool** is usable (axe durability / `break-tool` when `need-tool` is true).
-10. Flood fill finds at least one block after **durability budget** trim.
+10. Flood fill finds at least one block after **durability budget** trim (per-player damage rules apply).
 
 If all pass, the original break is cancelled and the chain runs.
 
@@ -899,12 +972,12 @@ mvn clean package
 **Output:**
 
 ```
-target/NormalTreeCapitator-1.0.3.jar
+target/NormalTreeCapitator-1.0.4.jar
 ```
 
 The JAR is shaded (bStats relocated). No extra libraries needed at runtime.
 
-The built plugin version string appears in `/plugins` as e.g. `1.0.3 Build 3` (build number auto-increments each package).
+The built plugin version string appears in `/plugins` as e.g. `1.0.4 Build 3` (build number auto-increments each package).
 
 ---
 
@@ -980,7 +1053,8 @@ This plugin includes [bStats](https://bstats.org/) for **anonymous** usage stati
 
 | Version | Notes |
 |---------|--------|
-| **1.0.3** | Tool-aware groups, config ownership for `groups` / `block-damages`, sapling top-up for free foliage, `/normaltreecap version`, Pastebin update alerts — see **[1.0.3.md](1.0.3.md)** |
+| **1.0.4** (current) | `/tc status`, `user` / `admin.*` packs, optional group & damage `permission:` gates — see **[1.0.4.md](1.0.4.md)** |
+| **1.0.3** | Tool-aware groups, config ownership, durability/replant leaf handling, `/normaltreecap version`, Pastebin updates — see **[1.0.3.md](1.0.3.md)** |
 | **1.0.2** | Prior stable release |
 
 ---

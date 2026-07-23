@@ -82,7 +82,7 @@ public final class TreeCapitatorListener implements Listener {
 
         Material material = block.getType();
         ItemStack tool = player.getInventory().getItemInMainHand();
-        TreeBlockGroup group = config.groupFor(material, tool.getType());
+        TreeBlockGroup group = config.groupFor(material, tool.getType(), player);
         if (group == null) {
             return;
         }
@@ -142,7 +142,7 @@ public final class TreeCapitatorListener implements Listener {
 
         int limit = chainLimit(group);
         List<BlockPosition> collected = collectBlocks(block, group, limit);
-        List<BlockPosition> targets = ChainLimiter.limitToToolBudget(collected, tool, config);
+        List<BlockPosition> targets = ChainLimiter.limitToToolBudget(collected, tool, config, player);
         if (targets.isEmpty()) {
             if (collected.isEmpty()) {
                 TreeCapLog.info(config, plugin, player,
@@ -299,12 +299,13 @@ public final class TreeCapitatorListener implements Listener {
                 return;
             }
 
+            int damageCost = config.blockDamage(targetType, player);
             if (config.damageTool() && ToolHelper.damageTool(
-                    player, tool, true, config.breakTool(), config.blockDamage(targetType)
+                    player, tool, true, config.breakTool(), damageCost
             )) {
                 toolBroken.set(true);
                 TreeCapLog.info(config, plugin, player,
-                        prefix + "tool exhausted after damage=" + config.blockDamage(targetType));
+                        prefix + "tool exhausted after damage=" + damageCost);
             }
 
             Material below = target.getWorld().getBlockAt(
@@ -338,7 +339,7 @@ public final class TreeCapitatorListener implements Listener {
 
             TreeCapLog.info(config, plugin, player,
                     prefix + "RESULT=BROKEN type=" + targetType
-                            + " damage=" + config.blockDamage(targetType)
+                            + " damage=" + damageCost
                             + " at " + TreeCapLog.blockLabel(loc, targetType)
                             + " " + expect
                             + " " + dropText

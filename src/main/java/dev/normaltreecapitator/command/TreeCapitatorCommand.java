@@ -6,6 +6,7 @@ import dev.normaltreecapitator.messages.PluginMessages;
 import dev.normaltreecapitator.playerdata.PlayerData;
 import dev.normaltreecapitator.playerdata.PlayerDataStore;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
@@ -14,7 +15,7 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
+import java.util.UUID;
 
 public final class TreeCapitatorCommand implements TabExecutor {
 
@@ -39,6 +40,9 @@ public final class TreeCapitatorCommand implements TabExecutor {
         if (handleReload(sender, args)) {
             return true;
         }
+        if (handleStatus(sender, label, args)) {
+            return true;
+        }
         if (handleToggle(sender, command, args)) {
             return true;
         }
@@ -53,16 +57,22 @@ public final class TreeCapitatorCommand implements TabExecutor {
             suggest(out, args[0], "help");
             suggest(out, args[0], "version");
             suggest(out, args[0], "toggle");
-            if (sender.hasPermission("normaltreecapitator.reload")) {
+            if (sender.hasPermission("normaltreecapitator.admin.status")) {
+                suggest(out, args[0], "status");
+            }
+            if (sender.hasPermission("normaltreecapitator.admin.reload")) {
                 suggest(out, args[0], "reload");
             }
             return out;
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("toggle")) {
-            if (sender.hasPermission("normaltreecapitator.toggle.others")) {
-                for (Player player : Bukkit.getOnlinePlayers()) {
-                    suggest(out, args[1], player.getName());
-                }
+            if (sender.hasPermission("normaltreecapitator.admin.toggle.others")) {
+                suggestPlayerNames(out, args[1], true);
+            }
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("status")) {
+            if (sender.hasPermission("normaltreecapitator.admin.status")) {
+                suggestPlayerNames(out, args[1], false);
             }
         }
         return out;
@@ -82,7 +92,7 @@ public final class TreeCapitatorCommand implements TabExecutor {
         PlayerDataStore store = plugin.playerData();
 
         if (args.length >= 2) {
-            if (!sender.hasPermission("normaltreecapitator.toggle.others")) {
+            if (!sender.hasPermission("normaltreecapitator.admin.toggle.others")) {
                 plugin.messages().send(sender, "no-permission-toggle-others");
                 return true;
             }
@@ -126,12 +136,52 @@ public final class TreeCapitatorCommand implements TabExecutor {
         if (args.length == 0 || !args[0].equalsIgnoreCase("reload")) {
             return false;
         }
-        if (!sender.hasPermission("normaltreecapitator.reload")) {
+        if (!sender.hasPermission("normaltreecapitator.admin.reload")) {
             plugin.messages().send(sender, "no-permission-reload");
             return true;
         }
         plugin.reloadAll();
         plugin.messages().send(sender, "reload-success");
+        return true;
+    }
+
+    private boolean handleStatus(CommandSender sender, String label, String[] args) {
+        if (args.length == 0 || !args[0].equalsIgnoreCase("status")) {
+            return false;
+        }
+        if (!sender.hasPermission("normaltreecapitator.admin.status")) {
+            plugin.messages().send(sender, "no-permission-status");
+            return true;
+        }
+
+        TreeCapitatorConfig config = plugin.config();
+        PlayerDataStore store = plugin.playerData();
+
+        if (args.length >= 2) {
+            ResolvedPlayer target = resolvePlayer(args[1]);
+            if (target == null) {
+                plugin.messages().send(sender, "player-not-found", PluginMessages.map("player", args[1]));
+                return true;
+            }
+            boolean enabled = store.get(target.uuid(), config).enabled();
+            plugin.messages().send(sender, "status-other", PluginMessages.map(
+                    "feature", featureName("feature-treecapitator"),
+                    "state", stateValue(enabled),
+                    "target", target.name(),
+                    "presence", presenceValue(target.online())
+            ));
+            return true;
+        }
+
+        if (!(sender instanceof Player player)) {
+            sendUsage(sender, label, "status <player>");
+            return true;
+        }
+        boolean enabled = store.get(player.getUniqueId(), config).enabled();
+        plugin.messages().send(sender, "status-self", PluginMessages.map(
+                "feature", featureName("feature-treecapitator"),
+                "state", stateValue(enabled)
+        ));
         return true;
     }
 
@@ -153,13 +203,72 @@ public final class TreeCapitatorCommand implements TabExecutor {
                 "label", label,
                 "feature", featureName("feature-tree-capitator")
         ));
-        if (sender.hasPermission("normaltreecapitator.toggle.others")) {
+        if (sender.hasPermission("normaltreecapitator.admin.toggle.others")) {
             plugin.messages().send(sender, "help-toggle-player", PluginMessages.map("label", label));
         }
-        if (sender.hasPermission("normaltreecapitator.reload")) {
+        if (sender.hasPermission("normaltreecapitator.admin.status")) {
+            plugin.messages().send(sender, "help-status", PluginMessages.map("label", label));
+            plugin.messages().send(sender, "help-status-player", PluginMessages.map("label", label));
+        }
+        if (sender.hasPermission("normaltreecapitator.admin.reload")) {
             plugin.messages().send(sender, "help-reload", PluginMessages.map("label", label));
         }
         return true;
+    }
+
+    private ResolvedPlayer resolvePlayer(String name) {
+        Player online = Bukkit.getPlayerExact(name);
+        if (online != null) {
+            return new ResolvedPlayer(online.getUniqueId(), online.getName(), true);
+        }
+        OfflinePlayer match = null;
+        for (OfflinePlayer offline : Bukkit.getOfflinePlayers()) {
+            String offlineName = offline.getName();
+            if (offlineName != null && offlineName.equalsIgnoreCase(name)) {
+                match = offline;
+                break;
+            }
+        }
+        if (match == null || match.getUniqueId() == null) {
+            return null;
+        }
+        if (!match.hasPlayedBefore() && !match.isOnline()) {
+            return null;
+        }
+        String resolvedName = match.getName() != null ? match.getName() : name;
+        return new ResolvedPlayer(match.getUniqueId(), resolvedName, match.isOnline());
+    }
+
+    private void suggestPlayerNames(List<String> out, String typed, boolean onlineOnly) {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            suggest(out, typed, player.getName());
+        }
+        if (onlineOnly) {
+            return;
+        }
+        String prefix = typed.toLowerCase(Locale.ROOT);
+        for (OfflinePlayer offline : Bukkit.getOfflinePlayers()) {
+            if (offline.isOnline()) {
+                continue;
+            }
+            String name = offline.getName();
+            if (name == null || !name.toLowerCase(Locale.ROOT).startsWith(prefix)) {
+                continue;
+            }
+            if (!out.contains(name)) {
+                out.add(name);
+            }
+            if (out.size() >= 50) {
+                break;
+            }
+        }
+    }
+
+    private String presenceValue(boolean online) {
+        return plugin.messages().get(online ? "presence-online" : "presence-offline");
+    }
+
+    private record ResolvedPlayer(UUID uuid, String name, boolean online) {
     }
 
     private String featureName(String key) {

@@ -267,8 +267,9 @@ public final class BulkBreakExecutor {
                                 + TreeCapLog.connectedRemaining(blockLoc, chain, group::matchesBlock));
                 return;
             }
+            int damageCost = config.blockDamage(targetType, player);
             if (config.damageTool() && ToolHelper.damageTool(
-                    player, tool, true, config.breakTool(), config.blockDamage(targetType)
+                    player, tool, true, config.breakTool(), damageCost
             )) {
                 toolBroken.set(true);
             }
@@ -301,7 +302,7 @@ public final class BulkBreakExecutor {
             accumulator.incrementBlocksBroken();
             TreeCapLog.info(config, plugin, player,
                     prefix + "RESULT=BROKEN type=" + targetType
-                            + " damage=" + config.blockDamage(targetType)
+                            + " damage=" + damageCost
                             + " at " + TreeCapLog.blockLabel(blockLoc, targetType)
                             + " " + expect
                             + " " + dropText

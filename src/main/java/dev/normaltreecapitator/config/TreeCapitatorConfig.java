@@ -5,16 +5,15 @@ import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.permissions.Permissible;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 
@@ -41,9 +40,9 @@ public final class TreeCapitatorConfig {
     private int asyncDelay = 1;
 
     private List<TreeBlockGroup> groups = List.of();
+    private List<BlockDamageRule> damageRules = List.of();
     private Set<Material> treeBlocks = EnumSet.noneOf(Material.class);
     private Set<Material> treeTools = EnumSet.noneOf(Material.class);
-    private Map<Material, Integer> blockDamages = Map.of();
 
     public TreeCapitatorConfig(NormalTreeCapitator plugin) {
         this.plugin = plugin;
@@ -98,7 +97,7 @@ public final class TreeCapitatorConfig {
 
         // Only entries written in the player's config.yml (never jar defaults).
         // Missing section / unlisted blocks fall back to defaultBlockDamage().
-        blockDamages = parseBlockDamages(yaml.getConfigurationSection("block-damages"));
+        damageRules = parseBlockDamages(yaml.getConfigurationSection("block-damages"));
         groups = parseGroups(yaml.getConfigurationSection("groups"));
         rebuildCaches();
 
@@ -115,32 +114,35 @@ public final class TreeCapitatorConfig {
                 + " replant=" + replant);
     }
 
-    private Map<Material, Integer> parseBlockDamages(ConfigurationSection section) {
-        Map<Material, Integer> damages = new HashMap<>();
+    private List<BlockDamageRule> parseBlockDamages(ConfigurationSection section) {
+        List<BlockDamageRule> rules = new ArrayList<>();
         if (section == null) {
-            return Map.of();
+            return List.of();
         }
-        // Section names are arbitrary labels (logs, leaves, mushrooms, …).
-        for (String groupId : section.getKeys(false)) {
-            // Skip keys that exist only via defaults (should not happen for block-damages).
-            if (!section.isSet(groupId)) {
+        for (String ruleId : section.getKeys(false)) {
+            if (!section.isSet(ruleId)) {
                 continue;
             }
-            ConfigurationSection group = section.getConfigurationSection(groupId);
-            if (group == null) {
+            ConfigurationSection rule = section.getConfigurationSection(ruleId);
+            if (rule == null) {
                 continue;
             }
-            int damage = Math.max(0, group.getInt("damage", 1));
-            for (String blockName : group.getStringList("blocks")) {
+            int damage = Math.max(0, rule.getInt("damage", 1));
+            String permission = resolveConfigPermission("damage", rule.getString("permission"));
+            Set<Material> blocks = EnumSet.noneOf(Material.class);
+            for (String blockName : rule.getStringList("blocks")) {
                 Material material = resolveMaterial(blockName);
                 if (material == null) {
-                    plugin.getLogger().warning("Unknown block-damages." + groupId + " block: " + blockName);
+                    plugin.getLogger().warning("Unknown block-damages." + ruleId + " block: " + blockName);
                     continue;
                 }
-                damages.put(material, damage);
+                blocks.add(material);
+            }
+            if (!blocks.isEmpty()) {
+                rules.add(new BlockDamageRule(ruleId, permission, damage, blocks));
             }
         }
-        return Map.copyOf(damages);
+        return List.copyOf(rules);
     }
 
     private List<TreeBlockGroup> parseGroups(ConfigurationSection section) {
@@ -158,13 +160,31 @@ public final class TreeCapitatorConfig {
             }
             Set<Material> blocks = parseBlocks(group.getStringList("blocks"), groupId);
             Set<Material> tools = parseTools(group.getStringList("tools"), groupId);
+            String permission = resolveConfigPermission("group", group.getString("permission"));
             int groupMax = group.getInt("max-chain", maxChain);
             int groupRadius = clampRadius(group.getInt("search-radius", searchRadius));
             if (!blocks.isEmpty()) {
-                parsed.add(new TreeBlockGroup(groupId, blocks, tools, groupMax, groupRadius));
+                parsed.add(new TreeBlockGroup(
+                        groupId, permission, blocks, tools, groupMax, groupRadius
+                ));
             }
         }
         return List.copyOf(parsed);
+    }
+
+    /**
+     * {@code permission: vip} → {@code normaltreecapitator.damage.vip} / {@code .group.vip}.
+     * A value that already contains {@code .} is treated as a full permission node.
+     */
+    static String resolveConfigPermission(String kind, String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.contains(".")) {
+            return trimmed;
+        }
+        return "normaltreecapitator." + kind + "." + trimmed.toLowerCase(Locale.ROOT);
     }
 
     private void rebuildCaches() {
@@ -232,25 +252,35 @@ public final class TreeCapitatorConfig {
     }
 
     /**
-     * Picks the group for a broken block and held tool.
+     * Picks the group for a broken block, held tool, and player permissions.
      * <p>
-     * When {@code need-tool} is true, the first group that lists both the block and the tool wins.
-     * The same block may appear in multiple groups (e.g. stone-tier vs iron-tier woods).
-     * When {@code need-tool} is false, the first group that lists the block wins.
+     * Permission-gated groups the player qualifies for are preferred over open groups.
+     * With {@code need-tool: true}, the group must also list the held tool.
      */
-    public TreeBlockGroup groupFor(Material block, Material tool) {
+    public TreeBlockGroup groupFor(Material block, Material tool, Permissible player) {
         if (block == null) {
             return null;
         }
+        TreeBlockGroup openMatch = null;
+        TreeBlockGroup gatedMatch = null;
         for (TreeBlockGroup group : groups) {
             if (!group.matchesBlock(block)) {
                 continue;
             }
-            if (!needTool || group.allowsTool(tool)) {
-                return group;
+            if (needTool && !group.allowsTool(tool)) {
+                continue;
+            }
+            if (group.requiresPermission()) {
+                if (group.allows(player)) {
+                    gatedMatch = group;
+                }
+                continue;
+            }
+            if (openMatch == null) {
+                openMatch = group;
             }
         }
-        return null;
+        return gatedMatch != null ? gatedMatch : openMatch;
     }
 
     public boolean isTreeBlock(Material material) {
@@ -325,15 +355,42 @@ public final class TreeCapitatorConfig {
         return asyncDelay;
     }
 
-    public int blockDamage(Material material) {
+    /**
+     * Durability cost for a block for this player.
+     * Permission-gated damage rules override open rules when the player qualifies.
+     */
+    public int blockDamage(Material material, Permissible player) {
         if (material == null) {
             return 1;
         }
-        Integer configured = blockDamages.get(material);
-        if (configured != null) {
-            return configured;
+        Integer gated = null;
+        Integer open = null;
+        for (BlockDamageRule rule : damageRules) {
+            if (!rule.covers(material)) {
+                continue;
+            }
+            if (rule.requiresPermission()) {
+                if (rule.allows(player)) {
+                    gated = rule.damage();
+                }
+                continue;
+            }
+            if (open == null) {
+                open = rule.damage();
+            }
+        }
+        if (gated != null) {
+            return gated;
+        }
+        if (open != null) {
+            return open;
         }
         return defaultBlockDamage(material);
+    }
+
+    /** @deprecated use {@link #blockDamage(Material, Permissible)} */
+    public int blockDamage(Material material) {
+        return blockDamage(material, null);
     }
 
     static int defaultBlockDamage(Material material) {

@@ -2,6 +2,7 @@ package dev.normaltreecapitator.util;
 
 import dev.normaltreecapitator.config.TreeCapitatorConfig;
 import org.bukkit.Material;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
@@ -25,7 +26,8 @@ public final class ChainLimiter {
     public static List<BlockPosition> limitToToolBudget(
             List<BlockPosition> targets,
             ItemStack tool,
-            TreeCapitatorConfig config
+            TreeCapitatorConfig config,
+            Player player
     ) {
         if (targets == null || targets.isEmpty()) {
             return targets == null ? List.of() : targets;
@@ -43,10 +45,9 @@ public final class ChainLimiter {
         List<BlockPosition> costly = new ArrayList<>(targets.size());
         Set<String> logFamilies = new HashSet<>();
 
-        // Pass 1 — take costly blocks (logs) while the axe can afford them.
         for (BlockPosition pos : targets) {
             Material type = AdjacentFlooder.safeType(pos.world(), pos.x(), pos.y(), pos.z());
-            int cost = type == null ? 1 : config.blockDamage(type);
+            int cost = type == null ? 1 : config.blockDamage(type, player);
             if (cost <= 0) {
                 continue;
             }
@@ -63,14 +64,10 @@ public final class ChainLimiter {
             }
         }
 
-        // Pass 2 — append every connected 0-cost block from the full flood-fill list.
-        // Trunks are ordered first, so a mid-list budget cut must not skip later leaves.
-        // Only foliage matching broken log families is kept when we know those families
-        // (so we break leaves that can drop saplings for the stumps we actually cut).
         List<BlockPosition> free = new ArrayList<>(targets.size());
         for (BlockPosition pos : targets) {
             Material type = AdjacentFlooder.safeType(pos.world(), pos.x(), pos.y(), pos.z());
-            int cost = type == null ? 1 : config.blockDamage(type);
+            int cost = type == null ? 1 : config.blockDamage(type, player);
             if (cost > 0) {
                 continue;
             }
@@ -87,7 +84,6 @@ public final class ChainLimiter {
             return List.copyOf(costly);
         }
         if (costly.isEmpty()) {
-            // No logs in budget — do not strip a canopy with no stumps to replant.
             return List.of();
         }
         List<BlockPosition> allowed = new ArrayList<>(costly.size() + free.size());
