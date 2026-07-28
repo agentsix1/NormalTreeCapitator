@@ -55,12 +55,11 @@ public final class PlayerDataStore {
         }
         FileConfiguration yaml = YamlConfiguration.loadConfiguration(file);
         boolean enabled = yaml.getBoolean("enabled", defaultEnabled);
-        boolean structureProtection = yaml.getBoolean("structure-protection", true);
         String language = yaml.getString("language");
         if (language != null && language.isBlank()) {
             language = null;
         }
-        return new PlayerData(enabled, structureProtection, language);
+        return new PlayerData(enabled, language);
     }
 
     private void writeToDisk(UUID uuid, PlayerData data) {
@@ -69,8 +68,8 @@ public final class PlayerDataStore {
                 ? YamlConfiguration.loadConfiguration(file)
                 : new YamlConfiguration();
         yaml.set("enabled", data.enabled());
-        yaml.set("structure-protection", data.structureProtection());
         yaml.set("language", data.language());
+        yaml.set("structure-protection", null);
         yaml.set("unsafe-breaking", null);
         try {
             yaml.save(file);

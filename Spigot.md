@@ -16,13 +16,12 @@ Works on [B]Paper, Folia, Spigot, and Bukkit.[/B] Easy for players. Plenty for a
 [*][B]One swing, whole tree[/B] — classic tree capitator feel without the busywork
 [*][B]Drops at the stump[/B] — everything piles where you started chopping, so pickup is easy
 [*][B]Folia-friendly[/B] — runs on Folia, not only Paper/Spigot/Bukkit
-[*][B]Won’t eat your house[/B] — structure protection keeps builds and villages safer; real trees still fall like they should
 [*][B]Big trees, chill server[/B] — huge ones break in waves so TPS doesn’t throw a tantrum
 [*][B]Your trees, your rules[/B] — mix oak with VIP axes, mushrooms, bamboo… all in YAML
 [*][B]Optional replant[/B] — saplings/fungus can grow back after the tree’s done
 [*][B]Fair on axes[/B] — leaves can cost zero durability; turn [I]break-tool[/I] off and your axe won’t snap mid-tree
 [*][B]Plays nice with claims[/B] — WorldGuard, GriefPrevention, Lands, CoreProtect, and friends still get a say per block
-[*][B]Languages[/B] — bundled [I]EN-us[/I], [I]EN-gb[/I], [I]EN-sg[/I], [I]DE-de[/I], [I]ES-es[/I], [I]PT-br[/I] (or drop in your own file)
+[*][B]Languages[/B] — bundled [I]EN-us[/I], [I]EN-gb[/I], [I]EN-sg[/I], [I]DE-de[/I], [I]ES-es[/I], [I]PT-br[/I] (or drop in your own file). Non-English wording isn’t all native-speaker perfect — edit freely if something sounds weird.
 [*][B]You’re in control[/B] — [I]/tc toggle[/I] if you’re not feeling it; staff can peek with [I]/tc <player>[/I]; [I]/tc status[/I] shows progress while a giant is falling
 [/LIST]
 
@@ -62,7 +61,7 @@ Done. Go hit a tree.
 [/TR]
 [TR]
 [TD]Break a log with an axe[/TD]
-[TD]Connected tree comes down (natural trees by default)[/TD]
+[TD]Connected tree comes down[/TD]
 [/TR]
 [TR]
 [TD]Watch the ground[/TD]
@@ -170,14 +169,9 @@ Each one has its own permission. Give the whole pack, or pick and choose.
 [TD][I]normaltreecapitator.language[/I][/TD]
 [TD][I]false[/I] (not in [I]user[/I])[/TD]
 [/TR]
-[TR]
-[TD][I]/tc structure-protection[/I][/TD]
-[TD][I]normaltreecapitator.structure-protection[/I][/TD]
-[TD][I]false[/I] (not in [I]user[/I])[/TD]
-[/TR]
 [/TABLE]
 
-[B]Packs:[/B] [I]normaltreecapitator.user[/I] (everyone by default) · [I]normaltreecapitator.admin[/I] · [I]normaltreecapitator.*[/I] (includes optional [I]language[/I] + [I]structure-protection[/I])
+[B]Packs:[/B] [I]normaltreecapitator.user[/I] (everyone by default) · [I]normaltreecapitator.admin[/I] · [I]normaltreecapitator.*[/I] (includes optional [I]language[/I])
 [B]Extra gates from config:[/B] [I]normaltreecapitator.group.<name>[/I] · [I]normaltreecapitator.damage.<name>[/I]
 
 [TABLE]
@@ -187,7 +181,7 @@ Each one has its own permission. Give the whole pack, or pick and choose.
 [/TR]
 [TR]
 [TD][I]config.yml[/I][/TD]
-[TD]Trees, axes, limits, server language, replant, sneak, drops, structure protection, async, VIP stuff[/TD]
+[TD]Trees, axes, limits, server language, replant, sneak, drops, async, VIP stuff[/TD]
 [/TR]
 [TR]
 [TD][I]languages/*.yml[/I][/TD]
@@ -195,7 +189,7 @@ Each one has its own permission. Give the whole pack, or pick and choose.
 [/TR]
 [TR]
 [TD][I]playerdata/<uuid>.yml[/I][/TD]
-[TD]Per-player toggle, structure opt-out, personal language[/TD]
+[TD]Per-player toggle, personal language[/TD]
 [/TR]
 [/TABLE]
 
@@ -209,19 +203,11 @@ Each one has its own permission. Give the whole pack, or pick and choose.
 [/TR]
 [TR]
 [TD][I]language[/I][/TD]
-[TD]Server default — [I]EN-us[/I], [I]EN-gb[/I], [I]EN-sg[/I], [I]DE-de[/I], [I]ES-es[/I], [I]PT-br[/I] (or your own file in [I]languages/[/I])[/TD]
+[TD]Server default — [I]EN-us[/I], [I]EN-gb[/I], [I]EN-sg[/I], [I]DE-de[/I], [I]ES-es[/I], [I]PT-br[/I] (or your own file in [I]languages/[/I]). Bundled translations aren’t all native-speaker perfect.[/TD]
 [/TR]
 [TR]
 [TD][I]merge-item-drops[/I][/TD]
 [TD][B]On by default[/B] — all loot piles at the first chop spot[/TD]
-[/TR]
-[TR]
-[TD][I]structure-protection[/I][/TD]
-[TD]Real trees only; skip house/village wood[/TD]
-[/TR]
-[TR]
-[TD][I]structure-cleanup[/I][/TD]
-[TD]Still clear leftover leaf-only / lonely log stacks[/TD]
 [/TR]
 [TR]
 [TD][I]must-sneak[/I][/TD]
@@ -247,7 +233,6 @@ Each one has its own permission. Give the whole pack, or pick and choose.
 
 [SIZE=5][B]What’s new in 1.0.5[/B][/SIZE]
 [LIST]
-[*]Structure protection + cleanup for leftover leaves/logs
 [*][I]/tc[/I], [I]/tc <player>[/I], live [I]/tc status[/I], smarter [I]/tc help[/I]
 [*]Separate permission per player command
 [*][I]/tc version[/I] is admin-only now

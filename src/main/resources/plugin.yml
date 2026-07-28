@@ -19,7 +19,6 @@ permissions:
     children:
       normaltreecapitator.admin: true
       normaltreecapitator.user: true
-      normaltreecapitator.structure-protection: true
       normaltreecapitator.language: true
 
   normaltreecapitator.user:
@@ -60,10 +59,6 @@ permissions:
   normaltreecapitator.version:
     description: View /tc version (and update link if outdated)
     default: op
-
-  normaltreecapitator.structure-protection:
-    description: Toggle whether structure protection applies to you (/tc structure-protection)
-    default: false
 
   normaltreecapitator.language:
     description: Set your personal chat language (/tc language)

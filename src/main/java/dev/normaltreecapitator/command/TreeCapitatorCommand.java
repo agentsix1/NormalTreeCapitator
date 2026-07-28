@@ -23,7 +23,7 @@ import java.util.UUID;
 public final class TreeCapitatorCommand implements TabExecutor {
 
     private static final Set<String> SUBCOMMANDS = Set.of(
-            "help", "version", "toggle", "status", "reload", "language", "structure-protection"
+            "help", "version", "toggle", "status", "reload", "language"
     );
 
     private final NormalTreeCapitator plugin;
@@ -50,9 +50,6 @@ public final class TreeCapitatorCommand implements TabExecutor {
             return true;
         }
         if (handleChainStatus(sender, args)) {
-            return true;
-        }
-        if (handleStructureProtection(sender, args)) {
             return true;
         }
         if (handleToggle(sender, command, args)) {
@@ -87,10 +84,6 @@ public final class TreeCapitatorCommand implements TabExecutor {
             if (sender.hasPermission("normaltreecapitator.language")
                     || sender.hasPermission("normaltreecapitator.admin.language")) {
                 suggest(out, args[0], "language");
-            }
-            if (plugin.config().structureProtection()
-                    && sender.hasPermission("normaltreecapitator.structure-protection")) {
-                suggest(out, args[0], "structure-protection");
             }
             if (sender.hasPermission("normaltreecapitator.admin.state")) {
                 suggestPlayerNames(out, args[0], false);
@@ -411,45 +404,12 @@ public final class TreeCapitatorCommand implements TabExecutor {
         if (sender.hasPermission("normaltreecapitator.language")) {
             plugin.messages().send(sender, "help-language", PluginMessages.map("label", label));
         }
-        if (plugin.config().structureProtection()
-                && sender.hasPermission("normaltreecapitator.structure-protection")) {
-            plugin.messages().send(sender, "help-structure-protection", PluginMessages.map("label", label));
-        }
         if (sender.hasPermission("normaltreecapitator.admin.reload")) {
             plugin.messages().send(sender, "help-reload", PluginMessages.map("label", label));
         }
         if (sender.hasPermission("normaltreecapitator.admin.language")) {
             plugin.messages().send(sender, "help-language-server", PluginMessages.map("label", label));
         }
-        return true;
-    }
-
-    private boolean handleStructureProtection(CommandSender sender, String[] args) {
-        if (args.length == 0 || !args[0].equalsIgnoreCase("structure-protection")) {
-            return false;
-        }
-        if (!plugin.config().structureProtection()) {
-            plugin.messages().send(sender, "command-disabled-structure-protection");
-            return true;
-        }
-        if (!(sender instanceof Player player)) {
-            plugin.messages().send(sender, "only-players");
-            return true;
-        }
-        if (!sender.hasPermission("normaltreecapitator.structure-protection")) {
-            plugin.messages().send(sender, "no-permission");
-            return true;
-        }
-        TreeCapitatorConfig config = plugin.config();
-        PlayerDataStore store = plugin.playerData();
-        PlayerData data = store.get(player.getUniqueId(), config);
-        boolean next = !data.structureProtection();
-        data.setStructureProtection(next);
-        store.save(player.getUniqueId());
-        plugin.messages().send(sender, "structure-protection-self", PluginMessages.map(
-                "feature", featureName(sender, "feature-structure-protection"),
-                "state", stateValue(sender, next)
-        ));
         return true;
     }
 

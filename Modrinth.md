@@ -20,13 +20,12 @@ Works on **Paper, Folia, Spigot, and Bukkit.** Easy for players. Plenty for admi
 - **One swing, whole tree** — classic tree capitator feel without the busywork
 - **Drops at the stump** — everything piles where you started chopping, so pickup is easy
 - **Folia-friendly** — runs on Folia, not only Paper/Spigot/Bukkit
-- **Won’t eat your house** — structure protection keeps builds and villages safer; real trees still fall like they should
 - **Big trees, chill server** — huge ones break in waves so TPS doesn’t throw a tantrum
 - **Your trees, your rules** — mix oak with VIP axes, mushrooms, bamboo… all in YAML
 - **Optional replant** — saplings/fungus can grow back after the tree’s done
 - **Fair on axes** — leaves can cost zero durability; turn `break-tool` off and your axe won’t snap mid-tree
 - **Plays nice with claims** — WorldGuard, GriefPrevention, Lands, CoreProtect, and friends still get a say per block
-- **Languages** — bundled `EN-us`, `EN-gb`, `EN-sg`, `DE-de`, `ES-es`, `PT-br` (or drop in your own file)
+- **Languages** — bundled `EN-us`, `EN-gb`, `EN-sg`, `DE-de`, `ES-es`, `PT-br` (or drop in your own file). Non-English wording isn’t all native-speaker perfect — edit freely if something sounds weird.
 - **You’re in control** — `/tc toggle` if you’re not feeling it; staff can peek with `/tc <player>`; `/tc status` shows progress while a giant is falling
 
 > Full nerdy docs: **[GitHub README](https://github.com/agentsix1/NormalTreeCapitator)** · What’s new: **[1.0.5](https://github.com/agentsix1/NormalTreeCapitator/blob/main/1.0.5.md)**
@@ -59,7 +58,7 @@ Done. Go hit a tree.
 
 | Do this | What happens |
 |--------|----------------|
-| Break a log with an axe | Connected tree comes down (natural trees by default) |
+| Break a log with an axe | Connected tree comes down |
 | Watch the ground | Loot shows up at the block you first broke |
 | `/tc` | Check if tree cap is on for you |
 | `/tc toggle` | Flip it on/off for yourself |
@@ -99,16 +98,15 @@ Each one has its own permission. Give the whole pack, or pick and choose.
 | `/tc version` | `normaltreecapitator.version` | op |
 | `/tc language server <code>` | `normaltreecapitator.admin.language` | op |
 | `/tc language <code>` | `normaltreecapitator.language` | `false` (not in `user`) |
-| `/tc structure-protection` | `normaltreecapitator.structure-protection` | `false` (not in `user`) |
 
-**Packs:** `normaltreecapitator.user` (everyone by default) · `normaltreecapitator.admin` · `normaltreecapitator.*` (includes optional `language` + `structure-protection`)  
+**Packs:** `normaltreecapitator.user` (everyone by default) · `normaltreecapitator.admin` · `normaltreecapitator.*` (includes optional `language`)  
 **Extra gates from config:** `normaltreecapitator.group.<name>` · `normaltreecapitator.damage.<name>`
 
 | File | Job |
 |------|-----|
-| `config.yml` | Trees, axes, limits, server language, replant, sneak, drops, structure protection, async, VIP stuff |
+| `config.yml` | Trees, axes, limits, server language, replant, sneak, drops, async, VIP stuff |
 | `languages/*.yml` | Chat text & colors (server default + optional personal override) |
-| `playerdata/<uuid>.yml` | Per-player toggle, structure opt-out, personal language |
+| `playerdata/<uuid>.yml` | Per-player toggle, personal language |
 
 **Groups** — trees vs mushrooms vs custom junk, each with their own blocks/tools (and optional permission). Same log can sit in more than one group for tool tiers.
 
@@ -116,10 +114,8 @@ Each one has its own permission. Give the whole pack, or pick and choose.
 
 | Setting | Vibe |
 |---------|------|
-| `language` | Server default — `EN-us`, `EN-gb`, `EN-sg`, `DE-de`, `ES-es`, `PT-br` (or your own file in `languages/`) |
+| `language` | Server default — `EN-us`, `EN-gb`, `EN-sg`, `DE-de`, `ES-es`, `PT-br` (or your own file in `languages/`). Bundled translations aren’t all native-speaker perfect. |
 | `merge-item-drops` | **On by default** — all loot piles at the first chop spot |
-| `structure-protection` | Real trees only; skip house/village wood |
-| `structure-cleanup` | Still clear leftover leaf-only / lonely log stacks |
 | `must-sneak` | Sneak to cap, or stand to cap |
 | `replant` / `replant-consume-saplings` | Grow something back; optionally spend real sapling drops |
 | `break-tool` / `block-damages` | How hard axes take a beating |
@@ -130,7 +126,6 @@ Each one has its own permission. Give the whole pack, or pick and choose.
 
 ## What’s new in 1.0.5
 
-- Structure protection + cleanup for leftover leaves/logs
 - `/tc`, `/tc <player>`, live `/tc status`, smarter `/tc help`
 - Separate permission per player command
 - `/tc version` is admin-only now

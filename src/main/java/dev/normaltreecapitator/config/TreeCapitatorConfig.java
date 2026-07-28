@@ -39,8 +39,6 @@ public final class TreeCapitatorConfig {
     private int asyncStart = 150;
     private int blocksPerTick = 100;
     private int asyncDelay = 1;
-    private boolean structureProtection = true;
-    private boolean structureCleanup = true;
 
     private List<TreeBlockGroup> groups = List.of();
     private List<BlockDamageRule> damageRules = List.of();
@@ -101,8 +99,6 @@ public final class TreeCapitatorConfig {
             asyncStart = Math.max(1, settings.getInt("async-start", asyncStart));
             blocksPerTick = Math.max(1, settings.getInt("blocks-per-tick", blocksPerTick));
             asyncDelay = Math.max(0, settings.getInt("async-delay", asyncDelay));
-            structureProtection = settings.getBoolean("structure-protection", structureProtection);
-            structureCleanup = settings.getBoolean("structure-cleanup", structureCleanup);
         }
 
         // Only entries written in the player's config.yml (never jar defaults).
@@ -122,9 +118,7 @@ public final class TreeCapitatorConfig {
                 + " must-sneak=" + mustSneak
                 + " debug=" + debug
                 + " async-start=" + asyncStart
-                + " replant=" + replant
-                + " structure-protection=" + structureProtection
-                + " structure-cleanup=" + structureCleanup);
+                + " replant=" + replant);
     }
 
     public String language() {
@@ -388,14 +382,6 @@ public final class TreeCapitatorConfig {
 
     public int asyncDelay() {
         return asyncDelay;
-    }
-
-    public boolean structureProtection() {
-        return structureProtection;
-    }
-
-    public boolean structureCleanup() {
-        return structureCleanup;
     }
 
     /**

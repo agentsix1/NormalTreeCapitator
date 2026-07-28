@@ -12,7 +12,6 @@ import dev.normaltreecapitator.util.BulkDropAccumulator;
 import dev.normaltreecapitator.util.ChainLimiter;
 import dev.normaltreecapitator.util.DropHelper;
 import dev.normaltreecapitator.util.PendingReplant;
-import dev.normaltreecapitator.util.StructureProtection;
 import dev.normaltreecapitator.util.ToolHelper;
 import dev.normaltreecapitator.util.TreeCapLog;
 import dev.normaltreecapitator.util.TreeCapSneak;
@@ -162,33 +161,6 @@ public final class TreeCapitatorListener implements Listener {
                                 + " tool=" + tool.getType());
             }
             return;
-        }
-
-        boolean chainCapped = limit >= 0 && collected.size() >= limit;
-        PlayerData playerData = plugin.playerData().get(player.getUniqueId(), config);
-        if (StructureProtection.appliesTo(player, playerData, config)) {
-            String structureReason = StructureProtection.findStructureReason(
-                    collected, group, config, chainCapped
-            );
-            if (structureReason != null) {
-                boolean cleanup = config.structureCleanup()
-                        && StructureProtection.isOrphanCleanupChain(collected, group);
-                if (cleanup) {
-                    TreeCapLog.info(config, plugin, player,
-                            "structure-cleanup allowed"
-                                    + " origin=" + TreeCapLog.blockLabel(block.getLocation(), material)
-                                    + " reason=" + structureReason
-                                    + " chainSize=" + collected.size());
-                } else {
-                    TreeCapLog.info(config, plugin, player,
-                            "blocked: structure-protection"
-                                    + " origin=" + TreeCapLog.blockLabel(block.getLocation(), material)
-                                    + " reason=" + structureReason
-                                    + " chainSize=" + collected.size());
-                    plugin.messages().send(player, "structure-protected");
-                    return;
-                }
-            }
         }
 
         event.setCancelled(true);
