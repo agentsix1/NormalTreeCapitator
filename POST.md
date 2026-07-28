@@ -88,7 +88,7 @@ Large trees show a short **“Processing tree breaks…”** message while the c
 
 **Groups** — the fun part. You can make separate rules for trees, mushrooms, or custom blocks. Each group has its own block list and tool list. Trees won't chain into mushrooms unless you put them in the same group.
 
-**Notable settings (1.0.4+)**
+**Notable settings (1.0.5+)**
 
 | Setting | What it does |
 |---------|----------------|

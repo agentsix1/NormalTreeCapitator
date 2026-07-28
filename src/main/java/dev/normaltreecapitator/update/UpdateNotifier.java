@@ -13,16 +13,29 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Polls the Pastebin version feed and notifies ops / {@code normaltreecapitator.admin}:
+ * <ul>
+ *   <li>on plugin enable</li>
+ *   <li>when a permitted player joins</li>
+ *   <li>when a 30-minute Pastebin check finds a new (or changed) remote version</li>
+ *   <li>every 3 hours as a reminder while still outdated</li>
+ * </ul>
+ */
 public final class UpdateNotifier implements Listener {
 
+    private static final long THIRTY_MINUTES_TICKS = 20L * 60L * 30L;
     private static final long THREE_HOURS_TICKS = 20L * 60L * 60L * 3L;
 
     private final NormalTreeCapitator plugin;
     private final PastebinVersionFetcher fetcher;
     private final AtomicReference<RemoteVersionInfo> latest = new AtomicReference<>();
+    /** Last remote version string we already announced to staff (avoids 30-min spam). */
+    private final AtomicReference<String> lastAnnouncedRemoteVersion = new AtomicReference<>();
 
     public UpdateNotifier(NormalTreeCapitator plugin) {
         this.plugin = plugin;
@@ -33,12 +46,10 @@ public final class UpdateNotifier implements Listener {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         plugin.getScheduler().runAsync(() -> {
             refreshLatestVersion();
-            plugin.getScheduler().runGlobal(() -> {
-                logOutdatedToConsole();
-                notifyOnlineStaff();
-            });
+            plugin.getScheduler().runGlobal(() -> announceIfOutdated(true));
         });
-        plugin.getScheduler().runGlobalRepeating(this::onPeriodicCheck, THREE_HOURS_TICKS);
+        plugin.getScheduler().runGlobalRepeating(this::onThirtyMinutePoll, THIRTY_MINUTES_TICKS);
+        plugin.getScheduler().runGlobalRepeating(this::onThreeHourReminder, THREE_HOURS_TICKS);
     }
 
     public Optional<RemoteVersionInfo> latest() {
@@ -78,10 +89,34 @@ public final class UpdateNotifier implements Listener {
         });
     }
 
-    private void onPeriodicCheck() {
+    /**
+     * Every 30 minutes: re-fetch Pastebin. If the feed shows a newer version than local
+     * and that remote version (or URL) changed since last announce, notify staff + console.
+     */
+    private void onThirtyMinutePoll() {
+        plugin.getScheduler().runAsync(() -> {
+            RemoteVersionInfo previous = latest.get();
+            refreshLatestVersion();
+            RemoteVersionInfo current = latest.get();
+            plugin.getScheduler().runGlobal(() -> {
+                if (!isOutdated(current)) {
+                    return;
+                }
+                if (!remoteChanged(previous, current) && alreadyAnnounced(current)) {
+                    return;
+                }
+                announceIfOutdated(true);
+            });
+        });
+    }
+
+    /**
+     * Every 3 hours: if still outdated, remind console and online staff (even if already announced).
+     */
+    private void onThreeHourReminder() {
         plugin.getScheduler().runAsync(() -> {
             refreshLatestVersion();
-            plugin.getScheduler().runGlobal(this::notifyOnlineStaff);
+            plugin.getScheduler().runGlobal(() -> announceIfOutdated(false));
         });
     }
 
@@ -103,15 +138,28 @@ public final class UpdateNotifier implements Listener {
             if (!player.isOnline()) {
                 return;
             }
-            if (latest.get() == null) {
-                plugin.getScheduler().runAsync(() -> {
-                    refreshLatestVersion();
-                    plugin.getScheduler().runOnEntity(player, () -> notifyIfOutdated(player));
-                });
-                return;
-            }
-            notifyIfOutdated(player);
+            plugin.getScheduler().runAsync(() -> {
+                refreshLatestVersion();
+                plugin.getScheduler().runOnEntity(player, () -> notifyIfOutdated(player));
+            });
         }, 40L);
+    }
+
+    /**
+     * @param markAnnounced if true, record this remote version so 30-min polls won't spam it again
+     * @return true if an update was announced
+     */
+    private boolean announceIfOutdated(boolean markAnnounced) {
+        RemoteVersionInfo remote = latest.get();
+        if (!isOutdated(remote)) {
+            return false;
+        }
+        logOutdatedToConsole(remote);
+        notifyOnlineStaff();
+        if (markAnnounced) {
+            lastAnnouncedRemoteVersion.set(remote.version());
+        }
+        return true;
     }
 
     private void notifyOnlineStaff() {
@@ -120,11 +168,7 @@ public final class UpdateNotifier implements Listener {
         }
     }
 
-    private void logOutdatedToConsole() {
-        RemoteVersionInfo remote = latest.get();
-        if (!isOutdated(remote)) {
-            return;
-        }
+    private void logOutdatedToConsole(RemoteVersionInfo remote) {
         plugin.getLogger().warning(
                 "A newer NormalTreeCapitator is available: " + remote.version()
                         + " (running " + localVersion() + "). Download: " + remote.downloadUrl()
@@ -140,6 +184,25 @@ public final class UpdateNotifier implements Listener {
             return;
         }
         player.sendMessage(buildUpdateMessage(remote));
+    }
+
+    private boolean alreadyAnnounced(RemoteVersionInfo current) {
+        if (current == null) {
+            return true;
+        }
+        String announced = lastAnnouncedRemoteVersion.get();
+        return announced != null && announced.equalsIgnoreCase(current.version());
+    }
+
+    private static boolean remoteChanged(RemoteVersionInfo previous, RemoteVersionInfo current) {
+        if (current == null) {
+            return false;
+        }
+        if (previous == null) {
+            return true;
+        }
+        return !previous.version().equalsIgnoreCase(current.version())
+                || !Objects.equals(previous.downloadUrl(), current.downloadUrl());
     }
 
     static boolean isUpdateNotifyTarget(Player player) {

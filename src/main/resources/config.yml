@@ -5,6 +5,12 @@
 # Blocks/tools accept OAK_LOG, oak_log, or minecraft:oak_log
 # Unknown block names on older server versions are skipped with a warning at load time.
 
+# Chat language file in plugins/NormalTreeCapitator/languages/
+# Available languages: EN-us (English US), EN-gb (English UK), EN-sg (English Singapore),
+# DE-de (German), ES-es (Spanish), PT-br (Brazilian Portuguese)
+# You can add your own .yml files in that folder and set the name here (without .yml).
+language: EN-us
+
 defaults:
   enabled: true
 
@@ -30,6 +36,14 @@ settings:
   blocks-per-tick: 100
   # Ticks to wait between async break waves (0 = no delay).
   async-delay: 1
+  # When true, tree cap only runs on chains that look like natural trees
+  # (grounded stump + real foliage/canopy). Builds and world structures fall
+  # back to a normal single-block break. Real trees next to houses still work.
+  structure-protection: true
+  # When structure-protection blocks a chain, still allow orphan cleanup:
+  # leaf-only clusters, or log-only stacks that only touch air / other logs /
+  # the floor beneath them (leftover trunks or floating leaves).
+  structure-cleanup: true
 
 # Durability lost per block broken by tree capitator.
 # Each named section under block-damages is a custom label (logs, leaves, mushrooms,

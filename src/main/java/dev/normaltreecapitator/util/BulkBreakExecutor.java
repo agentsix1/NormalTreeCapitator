@@ -50,6 +50,14 @@ public final class BulkBreakExecutor {
                     "async chain begin targets=" + targets.size()
                             + " origin=" + TreeCapLog.blockLabel(origin, origin.getBlock().getType()));
 
+            plugin.chainProgress().start(
+                    player.getUniqueId(),
+                    targets.size(),
+                    true,
+                    config.blocksPerTick(),
+                    config.asyncDelay()
+            );
+
             AtomicBoolean toolBroken = new AtomicBoolean(false);
             BulkDropAccumulator accumulator = new BulkDropAccumulator();
             List<PendingReplant> brokenLogs = Collections.synchronizedList(new ArrayList<>());
@@ -178,6 +186,7 @@ public final class BulkBreakExecutor {
             TreeBlockGroup group,
             TreeCapitatorConfig config
     ) {
+        plugin.chainProgress().finish(player.getUniqueId());
         List<PendingReplant> stumps = config.replant()
                 ? TreeReplant.stumpsFromBrokenLogs(brokenLogs)
                 : List.of();
@@ -240,6 +249,7 @@ public final class BulkBreakExecutor {
         Material targetType = target.getType();
         Location blockLoc = target.getLocation();
         int n = breakSeq.incrementAndGet();
+        plugin.chainProgress().setCompleted(player.getUniqueId(), n);
         String prefix = "BLOCK " + n + "/" + total + " ";
         if (!group.matchesBlock(targetType)) {
             TreeCapLog.info(config, plugin, player,

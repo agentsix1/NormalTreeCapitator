@@ -12,6 +12,7 @@ import dev.normaltreecapitator.util.BulkDropAccumulator;
 import dev.normaltreecapitator.util.ChainLimiter;
 import dev.normaltreecapitator.util.DropHelper;
 import dev.normaltreecapitator.util.PendingReplant;
+import dev.normaltreecapitator.util.StructureProtection;
 import dev.normaltreecapitator.util.ToolHelper;
 import dev.normaltreecapitator.util.TreeCapLog;
 import dev.normaltreecapitator.util.TreeCapSneak;
@@ -34,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -59,7 +61,9 @@ public final class TreeCapitatorListener implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        plugin.sessions().setShiftHeld(event.getPlayer().getUniqueId(), false);
+        UUID id = event.getPlayer().getUniqueId();
+        plugin.sessions().setShiftHeld(id, false);
+        plugin.chainProgress().finish(id);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -160,6 +164,33 @@ public final class TreeCapitatorListener implements Listener {
             return;
         }
 
+        boolean chainCapped = limit >= 0 && collected.size() >= limit;
+        PlayerData playerData = plugin.playerData().get(player.getUniqueId(), config);
+        if (StructureProtection.appliesTo(player, playerData, config)) {
+            String structureReason = StructureProtection.findStructureReason(
+                    collected, group, config, chainCapped
+            );
+            if (structureReason != null) {
+                boolean cleanup = config.structureCleanup()
+                        && StructureProtection.isOrphanCleanupChain(collected, group);
+                if (cleanup) {
+                    TreeCapLog.info(config, plugin, player,
+                            "structure-cleanup allowed"
+                                    + " origin=" + TreeCapLog.blockLabel(block.getLocation(), material)
+                                    + " reason=" + structureReason
+                                    + " chainSize=" + collected.size());
+                } else {
+                    TreeCapLog.info(config, plugin, player,
+                            "blocked: structure-protection"
+                                    + " origin=" + TreeCapLog.blockLabel(block.getLocation(), material)
+                                    + " reason=" + structureReason
+                                    + " chainSize=" + collected.size());
+                    plugin.messages().send(player, "structure-protected");
+                    return;
+                }
+            }
+        }
+
         event.setCancelled(true);
         applyCooldown(player, config.cooldownTicks());
         notifyTreeProcessing(player);
@@ -208,6 +239,13 @@ public final class TreeCapitatorListener implements Listener {
             Location origin,
             List<BlockPosition> targets
     ) {
+        plugin.chainProgress().start(
+                player.getUniqueId(),
+                targets.size(),
+                false,
+                config.blocksPerTick(),
+                config.asyncDelay()
+        );
         TreeCapLog.info(config, plugin, player,
                 "sync chain begin targets=" + targets.size()
                         + " origin=" + TreeCapLog.blockLabel(origin, origin.getBlock().getType()));
@@ -270,6 +308,7 @@ public final class TreeCapitatorListener implements Listener {
         Block target = loc.getBlock();
         Material targetType = target.getType();
         int n = breakSeq.incrementAndGet();
+        plugin.chainProgress().setCompleted(player.getUniqueId(), n);
         String prefix = "BLOCK " + n + "/" + total + " ";
 
         if (!group.matchesBlock(targetType)) {
@@ -358,6 +397,7 @@ public final class TreeCapitatorListener implements Listener {
             TreeCapitatorConfig config,
             Player player
     ) {
+        plugin.chainProgress().finish(player.getUniqueId());
         List<PendingReplant> stumps = config.replant()
                 ? TreeReplant.stumpsFromBrokenLogs(brokenLogs)
                 : List.of();

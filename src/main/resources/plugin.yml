@@ -19,38 +19,64 @@ permissions:
     children:
       normaltreecapitator.admin: true
       normaltreecapitator.user: true
+      normaltreecapitator.structure-protection: true
+      normaltreecapitator.language: true
 
   normaltreecapitator.user:
-    description: All basic player permissions (use, toggle, help).
+    description: All basic player permissions (use, toggle, status, progress, help).
     default: true
     children:
       normaltreecapitator.use: true
       normaltreecapitator.toggle: true
+      normaltreecapitator.status: true
+      normaltreecapitator.progress: true
       normaltreecapitator.help: true
 
   normaltreecapitator.admin:
-    description: All admin permissions (status, reload, toggle others, protected saplings, update alerts).
+    description: All admin permissions (lookup others, reload, server language, toggle others, version, protected saplings, update alerts).
     default: op
     children:
-      normaltreecapitator.admin.status: true
+      normaltreecapitator.admin.state: true
       normaltreecapitator.admin.reload: true
+      normaltreecapitator.admin.language: true
       normaltreecapitator.admin.toggle.others: true
+      normaltreecapitator.version: true
 
   normaltreecapitator.use:
     description: Allows tree capitator when breaking blocks
     default: true
   normaltreecapitator.toggle:
-    description: Toggle tree capitator for yourself
+    description: Toggle tree capitator for yourself (/tc toggle)
+    default: true
+  normaltreecapitator.status:
+    description: View your tree capitator toggle state (/tc)
+    default: true
+  normaltreecapitator.progress:
+    description: View live chain break progress (/tc status)
     default: true
   normaltreecapitator.help:
-    description: View tree capitator help
+    description: View /tc help for commands you can use
     default: true
+  normaltreecapitator.version:
+    description: View /tc version (and update link if outdated)
+    default: op
 
-  normaltreecapitator.admin.status:
-    description: View tree capitator toggle status for yourself or any player
+  normaltreecapitator.structure-protection:
+    description: Toggle whether structure protection applies to you (/tc structure-protection)
+    default: false
+
+  normaltreecapitator.language:
+    description: Set your personal chat language (/tc language)
+    default: false
+
+  normaltreecapitator.admin.state:
+    description: View another player's toggle state via /tc <player>
     default: op
   normaltreecapitator.admin.reload:
     description: Reload config files
+    default: op
+  normaltreecapitator.admin.language:
+    description: Set the server default chat language (/tc language server)
     default: op
   normaltreecapitator.admin.toggle.others:
     description: Toggle tree capitator for other players

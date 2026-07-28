@@ -4,7 +4,7 @@
   <groupId>dev.normaltreecapitator</groupId>
   <artifactId>NormalTreeCapitator</artifactId>
   <name>NormalTreeCapitator</name>
-  <version>1.0.3</version>
+  <version>1.0.5</version>
   <description>Tree Capitator for Paper, Folia, Spigot, and Bukkit</description>
   <build>
     <defaultGoal>clean package</defaultGoal>

@@ -7,6 +7,7 @@ import dev.normaltreecapitator.messages.PluginMessages;
 import dev.normaltreecapitator.playerdata.PlayerDataStore;
 import dev.normaltreecapitator.scheduler.PluginScheduler;
 import dev.normaltreecapitator.session.BreakSession;
+import dev.normaltreecapitator.session.ChainProgressTracker;
 import dev.normaltreecapitator.update.UpdateNotifier;
 import dev.normaltreecapitator.util.ServerPlatform;
 import org.bstats.bukkit.Metrics;
@@ -22,21 +23,24 @@ public final class NormalTreeCapitator extends JavaPlugin {
     private PlayerDataStore playerData;
     private TreeCapitatorConfig config;
     private BreakSession sessions;
+    private ChainProgressTracker chainProgress;
     private UpdateNotifier updateNotifier;
 
     @Override
     public void onEnable() {
         instance = this;
 
-        messages = new PluginMessages(this);
-        messages.load();
-
         scheduler = new PluginScheduler(this);
         playerData = new PlayerDataStore(this);
         playerData.enable();
         config = new TreeCapitatorConfig(this);
         config.load();
+
+        messages = new PluginMessages(this);
+        messages.load();
+
         sessions = new BreakSession();
+        chainProgress = new ChainProgressTracker();
 
         getServer().getPluginManager().registerEvents(new TreeCapitatorListener(this), this);
         registerCommand("tc", new TreeCapitatorCommand(this));
@@ -73,8 +77,8 @@ public final class NormalTreeCapitator extends JavaPlugin {
     }
 
     public void reloadAll() {
-        messages.load();
         config.load();
+        messages.load();
     }
 
     public static NormalTreeCapitator getInstance() {
@@ -102,6 +106,10 @@ public final class NormalTreeCapitator extends JavaPlugin {
 
     public BreakSession sessions() {
         return sessions;
+    }
+
+    public ChainProgressTracker chainProgress() {
+        return chainProgress;
     }
 
     public UpdateNotifier updateNotifier() {

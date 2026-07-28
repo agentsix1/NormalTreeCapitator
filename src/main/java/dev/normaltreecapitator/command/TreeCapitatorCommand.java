@@ -5,6 +5,7 @@ import dev.normaltreecapitator.config.TreeCapitatorConfig;
 import dev.normaltreecapitator.messages.PluginMessages;
 import dev.normaltreecapitator.playerdata.PlayerData;
 import dev.normaltreecapitator.playerdata.PlayerDataStore;
+import dev.normaltreecapitator.session.ChainProgressTracker;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -15,9 +16,15 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public final class TreeCapitatorCommand implements TabExecutor {
+
+    private static final Set<String> SUBCOMMANDS = Set.of(
+            "help", "version", "toggle", "status", "reload", "language", "structure-protection"
+    );
 
     private final NormalTreeCapitator plugin;
 
@@ -28,8 +35,7 @@ public final class TreeCapitatorCommand implements TabExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            sendUsage(sender, label, "help");
-            return true;
+            return handleSelfToggleState(sender, label);
         }
         if (handleHelp(sender, label, args)) {
             return true;
@@ -40,10 +46,19 @@ public final class TreeCapitatorCommand implements TabExecutor {
         if (handleReload(sender, args)) {
             return true;
         }
-        if (handleStatus(sender, label, args)) {
+        if (handleLanguage(sender, label, args)) {
+            return true;
+        }
+        if (handleChainStatus(sender, args)) {
+            return true;
+        }
+        if (handleStructureProtection(sender, args)) {
             return true;
         }
         if (handleToggle(sender, command, args)) {
+            return true;
+        }
+        if (handlePlayerLookup(sender, label, args)) {
             return true;
         }
         plugin.messages().send(sender, "unknown-subcommand", PluginMessages.map("label", label));
@@ -54,14 +69,53 @@ public final class TreeCapitatorCommand implements TabExecutor {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
         if (args.length == 1) {
-            suggest(out, args[0], "help");
-            suggest(out, args[0], "version");
-            suggest(out, args[0], "toggle");
-            if (sender.hasPermission("normaltreecapitator.admin.status")) {
+            if (sender.hasPermission("normaltreecapitator.help")) {
+                suggest(out, args[0], "help");
+            }
+            if (sender.hasPermission("normaltreecapitator.version")) {
+                suggest(out, args[0], "version");
+            }
+            if (sender.hasPermission("normaltreecapitator.toggle")) {
+                suggest(out, args[0], "toggle");
+            }
+            if (sender.hasPermission("normaltreecapitator.progress")) {
                 suggest(out, args[0], "status");
             }
             if (sender.hasPermission("normaltreecapitator.admin.reload")) {
                 suggest(out, args[0], "reload");
+            }
+            if (sender.hasPermission("normaltreecapitator.language")
+                    || sender.hasPermission("normaltreecapitator.admin.language")) {
+                suggest(out, args[0], "language");
+            }
+            if (plugin.config().structureProtection()
+                    && sender.hasPermission("normaltreecapitator.structure-protection")) {
+                suggest(out, args[0], "structure-protection");
+            }
+            if (sender.hasPermission("normaltreecapitator.admin.state")) {
+                suggestPlayerNames(out, args[0], false);
+            }
+            return out;
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("language")) {
+            if (sender.hasPermission("normaltreecapitator.admin.language")) {
+                suggest(out, args[1], "server");
+            }
+            if (sender.hasPermission("normaltreecapitator.language")
+                    || (!(sender instanceof Player)
+                    && sender.hasPermission("normaltreecapitator.admin.language"))) {
+                for (String code : plugin.messages().availableLanguages()) {
+                    suggest(out, args[1], code);
+                }
+            }
+            return out;
+        }
+        if (args.length == 3
+                && args[0].equalsIgnoreCase("language")
+                && args[1].equalsIgnoreCase("server")
+                && sender.hasPermission("normaltreecapitator.admin.language")) {
+            for (String code : plugin.messages().availableLanguages()) {
+                suggest(out, args[2], code);
             }
             return out;
         }
@@ -70,12 +124,97 @@ public final class TreeCapitatorCommand implements TabExecutor {
                 suggestPlayerNames(out, args[1], true);
             }
         }
-        if (args.length == 2 && args[0].equalsIgnoreCase("status")) {
-            if (sender.hasPermission("normaltreecapitator.admin.status")) {
-                suggestPlayerNames(out, args[1], false);
-            }
-        }
         return out;
+    }
+
+    private boolean handleSelfToggleState(CommandSender sender, String label) {
+        if (!(sender instanceof Player player)) {
+            sendUsage(sender, label, "help");
+            return true;
+        }
+        if (!sender.hasPermission("normaltreecapitator.status")) {
+            plugin.messages().send(sender, "no-permission-status");
+            return true;
+        }
+        boolean enabled = plugin.playerData().get(player.getUniqueId(), plugin.config()).enabled();
+        plugin.messages().send(sender, "status-self", PluginMessages.map(
+                "feature", featureName(sender, "feature-treecapitator"),
+                "state", stateValue(sender, enabled)
+        ));
+        return true;
+    }
+
+    private boolean handlePlayerLookup(CommandSender sender, String label, String[] args) {
+        if (args.length == 0 || SUBCOMMANDS.contains(args[0].toLowerCase(Locale.ROOT))) {
+            return false;
+        }
+        if (!sender.hasPermission("normaltreecapitator.admin.state")) {
+            plugin.messages().send(sender, "no-permission-status-others");
+            return true;
+        }
+        ResolvedPlayer target = resolvePlayer(args[0]);
+        if (target == null) {
+            plugin.messages().send(sender, "player-not-found", PluginMessages.map("player", args[0]));
+            return true;
+        }
+        boolean enabled = plugin.playerData().get(target.uuid(), plugin.config()).enabled();
+        plugin.messages().send(sender, "status-other", PluginMessages.map(
+                "feature", featureName(sender, "feature-treecapitator"),
+                "state", stateValue(sender, enabled),
+                "target", target.name(),
+                "presence", presenceValue(sender, target.online())
+        ));
+        return true;
+    }
+
+    private boolean handleChainStatus(CommandSender sender, String[] args) {
+        if (args.length == 0 || !args[0].equalsIgnoreCase("status")) {
+            return false;
+        }
+        if (!(sender instanceof Player player)) {
+            plugin.messages().send(sender, "only-players");
+            return true;
+        }
+        if (!sender.hasPermission("normaltreecapitator.progress")) {
+            plugin.messages().send(sender, "no-permission-progress");
+            return true;
+        }
+        Optional<ChainProgressTracker.ChainJob> job = plugin.chainProgress().get(player.getUniqueId());
+        if (job.isEmpty()) {
+            plugin.messages().send(sender, "chain-status-idle");
+            return true;
+        }
+        ChainProgressTracker.ChainJob active = job.get();
+        plugin.messages().send(sender, "chain-status", PluginMessages.map(
+                "done", String.valueOf(active.done()),
+                "total", String.valueOf(active.total()),
+                "percent", String.valueOf(active.percent()),
+                "remaining", String.valueOf(active.remaining()),
+                "eta", formatEta(active.estimateRemainingMs()),
+                "mode", active.async() ? "async" : "sync"
+        ));
+        return true;
+    }
+
+    private static String formatEta(long remainingMs) {
+        if (remainingMs < 0) {
+            return "…";
+        }
+        if (remainingMs < 1000L) {
+            return "<1s";
+        }
+        long totalSeconds = Math.max(1L, (remainingMs + 500L) / 1000L);
+        if (totalSeconds < 60L) {
+            return "~" + totalSeconds + "s";
+        }
+        long minutes = totalSeconds / 60L;
+        long seconds = totalSeconds % 60L;
+        if (minutes < 60L) {
+            return seconds == 0 ? "~" + minutes + "m" : "~" + minutes + "m " + seconds + "s";
+        }
+        long hours = minutes / 60L;
+        long remMinutes = minutes % 60L;
+        return remMinutes == 0 ? "~" + hours + "h" : "~" + hours + "h " + remMinutes + "m";
     }
 
     private void sendUsage(CommandSender sender, String label, String usage) {
@@ -83,7 +222,6 @@ public final class TreeCapitatorCommand implements TabExecutor {
     }
 
     private boolean handleToggle(CommandSender sender, Command command, String[] args) {
-        String label = command.getLabel().toLowerCase(Locale.ROOT);
         if (args.length == 0 || !args[0].equalsIgnoreCase("toggle")) {
             return false;
         }
@@ -102,15 +240,15 @@ public final class TreeCapitatorCommand implements TabExecutor {
                 return true;
             }
             boolean enabled = toggle(store, target, config);
-            String state = stateValue(enabled);
+            String state = stateValue(sender, enabled);
             plugin.messages().send(sender, "toggle-other-sender", PluginMessages.map(
-                    "feature", featureName("feature-treecapitator"),
+                    "feature", featureName(sender, "feature-treecapitator"),
                     "state", state,
                     "target", target.getName()
             ));
             plugin.messages().send(target, "toggle-other-target", PluginMessages.map(
-                    "feature", featureName("feature-treecapitator"),
-                    "state", state,
+                    "feature", featureName(target, "feature-treecapitator"),
+                    "state", stateValue(target, enabled),
                     "sender", sender.getName()
             ));
             return true;
@@ -126,8 +264,8 @@ public final class TreeCapitatorCommand implements TabExecutor {
         }
         boolean enabled = toggle(store, player, config);
         plugin.messages().send(sender, "toggle-self", PluginMessages.map(
-                "feature", featureName("feature-treecapitator"),
-                "state", stateValue(enabled)
+                "feature", featureName(sender, "feature-treecapitator"),
+                "state", stateValue(sender, enabled)
         ));
         return true;
     }
@@ -145,42 +283,85 @@ public final class TreeCapitatorCommand implements TabExecutor {
         return true;
     }
 
-    private boolean handleStatus(CommandSender sender, String label, String[] args) {
-        if (args.length == 0 || !args[0].equalsIgnoreCase("status")) {
+    private boolean handleLanguage(CommandSender sender, String label, String[] args) {
+        if (args.length == 0 || !args[0].equalsIgnoreCase("language")) {
             return false;
         }
-        if (!sender.hasPermission("normaltreecapitator.admin.status")) {
-            plugin.messages().send(sender, "no-permission-status");
+
+        if (args.length >= 2 && args[1].equalsIgnoreCase("server")) {
+            return handleServerLanguage(sender, label, args.length >= 3 ? args[2] : null);
+        }
+
+        if (!(sender instanceof Player player)) {
+            if (!sender.hasPermission("normaltreecapitator.admin.language")) {
+                plugin.messages().send(sender, "no-permission");
+                return true;
+            }
+            return handleServerLanguage(sender, label, args.length >= 2 ? args[1] : null);
+        }
+
+        if (!sender.hasPermission("normaltreecapitator.language")) {
+            plugin.messages().send(sender, "no-permission");
             return true;
         }
 
-        TreeCapitatorConfig config = plugin.config();
-        PlayerDataStore store = plugin.playerData();
+        String available = String.join(", ", plugin.messages().availableLanguages());
+        if (args.length < 2) {
+            plugin.messages().send(sender, "language-current", PluginMessages.map(
+                    "language", plugin.messages().resolveLanguageCode(sender),
+                    "languages", available
+            ));
+            sendUsage(sender, label, "language <code>");
+            return true;
+        }
 
-        if (args.length >= 2) {
-            ResolvedPlayer target = resolvePlayer(args[1]);
-            if (target == null) {
-                plugin.messages().send(sender, "player-not-found", PluginMessages.map("player", args[1]));
-                return true;
-            }
-            boolean enabled = store.get(target.uuid(), config).enabled();
-            plugin.messages().send(sender, "status-other", PluginMessages.map(
-                    "feature", featureName("feature-treecapitator"),
-                    "state", stateValue(enabled),
-                    "target", target.name(),
-                    "presence", presenceValue(target.online())
+        Optional<String> matched = plugin.messages().matchLanguage(args[1]);
+        if (matched.isEmpty()) {
+            plugin.messages().send(sender, "language-invalid", PluginMessages.map(
+                    "language", args[1],
+                    "languages", available
             ));
             return true;
         }
 
-        if (!(sender instanceof Player player)) {
-            sendUsage(sender, label, "status <player>");
+        PlayerData data = plugin.playerData().get(player.getUniqueId(), plugin.config());
+        data.setLanguage(matched.get());
+        plugin.playerData().save(player.getUniqueId());
+        plugin.messages().send(sender, "language-set", PluginMessages.map(
+                "language", matched.get()
+        ));
+        return true;
+    }
+
+    private boolean handleServerLanguage(CommandSender sender, String label, String codeArg) {
+        if (!sender.hasPermission("normaltreecapitator.admin.language")) {
+            plugin.messages().send(sender, "no-permission");
             return true;
         }
-        boolean enabled = store.get(player.getUniqueId(), config).enabled();
-        plugin.messages().send(sender, "status-self", PluginMessages.map(
-                "feature", featureName("feature-treecapitator"),
-                "state", stateValue(enabled)
+        String available = String.join(", ", plugin.messages().availableLanguages());
+        if (codeArg == null || codeArg.isBlank()) {
+            plugin.messages().send(sender, "language-server-current", PluginMessages.map(
+                    "language", plugin.messages().activeLanguage(),
+                    "languages", available
+            ));
+            sendUsage(sender, label, "language server <code>");
+            return true;
+        }
+        Optional<String> matched = plugin.messages().matchLanguage(codeArg);
+        if (matched.isEmpty()) {
+            plugin.messages().send(sender, "language-invalid", PluginMessages.map(
+                    "language", codeArg,
+                    "languages", available
+            ));
+            return true;
+        }
+        if (!plugin.config().setLanguage(matched.get())) {
+            plugin.messages().send(sender, "language-save-failed");
+            return true;
+        }
+        plugin.messages().load();
+        plugin.messages().send(sender, "language-server-set", PluginMessages.map(
+                "language", plugin.messages().activeLanguage()
         ));
         return true;
     }
@@ -188,6 +369,10 @@ public final class TreeCapitatorCommand implements TabExecutor {
     private boolean handleVersion(CommandSender sender, String[] args) {
         if (args.length == 0 || !args[0].equalsIgnoreCase("version")) {
             return false;
+        }
+        if (!sender.hasPermission("normaltreecapitator.version")) {
+            plugin.messages().send(sender, "no-permission");
+            return true;
         }
         plugin.updateNotifier().sendVersionReport(sender);
         return true;
@@ -197,22 +382,74 @@ public final class TreeCapitatorCommand implements TabExecutor {
         if (args.length == 0 || !args[0].equalsIgnoreCase("help")) {
             return false;
         }
+        if (!sender.hasPermission("normaltreecapitator.help")) {
+            plugin.messages().send(sender, "no-permission");
+            return true;
+        }
         plugin.messages().send(sender, "help-header", PluginMessages.map("label", label));
-        plugin.messages().send(sender, "help-version", PluginMessages.map("label", label));
-        plugin.messages().send(sender, "help-toggle", PluginMessages.map(
-                "label", label,
-                "feature", featureName("feature-tree-capitator")
-        ));
+        if (sender.hasPermission("normaltreecapitator.status")) {
+            plugin.messages().send(sender, "help-self", PluginMessages.map("label", label));
+        }
+        if (sender.hasPermission("normaltreecapitator.admin.state")) {
+            plugin.messages().send(sender, "help-player", PluginMessages.map("label", label));
+        }
+        if (sender.hasPermission("normaltreecapitator.progress")) {
+            plugin.messages().send(sender, "help-status", PluginMessages.map("label", label));
+        }
+        if (sender.hasPermission("normaltreecapitator.version")) {
+            plugin.messages().send(sender, "help-version", PluginMessages.map("label", label));
+        }
+        if (sender.hasPermission("normaltreecapitator.toggle")) {
+            plugin.messages().send(sender, "help-toggle", PluginMessages.map(
+                    "label", label,
+                    "feature", featureName(sender, "feature-tree-capitator")
+            ));
+        }
         if (sender.hasPermission("normaltreecapitator.admin.toggle.others")) {
             plugin.messages().send(sender, "help-toggle-player", PluginMessages.map("label", label));
         }
-        if (sender.hasPermission("normaltreecapitator.admin.status")) {
-            plugin.messages().send(sender, "help-status", PluginMessages.map("label", label));
-            plugin.messages().send(sender, "help-status-player", PluginMessages.map("label", label));
+        if (sender.hasPermission("normaltreecapitator.language")) {
+            plugin.messages().send(sender, "help-language", PluginMessages.map("label", label));
+        }
+        if (plugin.config().structureProtection()
+                && sender.hasPermission("normaltreecapitator.structure-protection")) {
+            plugin.messages().send(sender, "help-structure-protection", PluginMessages.map("label", label));
         }
         if (sender.hasPermission("normaltreecapitator.admin.reload")) {
             plugin.messages().send(sender, "help-reload", PluginMessages.map("label", label));
         }
+        if (sender.hasPermission("normaltreecapitator.admin.language")) {
+            plugin.messages().send(sender, "help-language-server", PluginMessages.map("label", label));
+        }
+        return true;
+    }
+
+    private boolean handleStructureProtection(CommandSender sender, String[] args) {
+        if (args.length == 0 || !args[0].equalsIgnoreCase("structure-protection")) {
+            return false;
+        }
+        if (!plugin.config().structureProtection()) {
+            plugin.messages().send(sender, "command-disabled-structure-protection");
+            return true;
+        }
+        if (!(sender instanceof Player player)) {
+            plugin.messages().send(sender, "only-players");
+            return true;
+        }
+        if (!sender.hasPermission("normaltreecapitator.structure-protection")) {
+            plugin.messages().send(sender, "no-permission");
+            return true;
+        }
+        TreeCapitatorConfig config = plugin.config();
+        PlayerDataStore store = plugin.playerData();
+        PlayerData data = store.get(player.getUniqueId(), config);
+        boolean next = !data.structureProtection();
+        data.setStructureProtection(next);
+        store.save(player.getUniqueId());
+        plugin.messages().send(sender, "structure-protection-self", PluginMessages.map(
+                "feature", featureName(sender, "feature-structure-protection"),
+                "state", stateValue(sender, next)
+        ));
         return true;
     }
 
@@ -264,19 +501,19 @@ public final class TreeCapitatorCommand implements TabExecutor {
         }
     }
 
-    private String presenceValue(boolean online) {
-        return plugin.messages().get(online ? "presence-online" : "presence-offline");
+    private String presenceValue(CommandSender sender, boolean online) {
+        return plugin.messages().get(sender, online ? "presence-online" : "presence-offline");
     }
 
     private record ResolvedPlayer(UUID uuid, String name, boolean online) {
     }
 
-    private String featureName(String key) {
-        return plugin.messages().get(key);
+    private String featureName(CommandSender sender, String key) {
+        return plugin.messages().get(sender, key);
     }
 
-    private String stateValue(boolean enabled) {
-        return plugin.messages().get(enabled ? "state-enabled" : "state-disabled");
+    private String stateValue(CommandSender sender, boolean enabled) {
+        return plugin.messages().get(sender, enabled ? "state-enabled" : "state-disabled");
     }
 
     private static boolean toggle(PlayerDataStore store, Player player, TreeCapitatorConfig config) {

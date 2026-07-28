@@ -18,15 +18,16 @@ This document is the full reference for the plugin: commands, permissions, every
 | **Modrinth** (recommended) | [modrinth.com/plugin/normal-tree-capitator](https://modrinth.com/plugin/normal-tree-capitator/versions) |
 | **GitHub** | [github.com/agentsix1/NormalTreeCapitator](https://github.com/agentsix1/NormalTreeCapitator) |
 | **Version feed** | [Pastebin raw](https://pastebin.com/raw/nc6CbGem) (`version\|download url` — used by in-game update checks) |
-| **Changelog** | [1.0.4.md](1.0.4.md) · [1.0.3.md](1.0.3.md) |
+| **Changelog** | [1.0.5.md](1.0.5.md) · [1.0.4.md](1.0.4.md) · [1.0.3.md](1.0.3.md) |
 
-**Current release: [1.0.4](1.0.4.md)** — status command, `user` / `admin.*` permissions, optional group & damage permission gates.
+**Current release: [1.0.5](1.0.5.md)** — structure protection, live `/tc status`, languages (`EN-us` / `EN-gb` / `EN-sg` / `DE-de` / `ES-es` / `PT-br`), smarter Pastebin update polling.
 
 ---
 
 ## Table of contents
 
 - [Overview](#overview)
+- [What's new in 1.0.5](#whats-new-in-105)
 - [What's new in 1.0.4](#whats-new-in-104)
 - [Upgrading to 1.0.4](#upgrading-to-104)
 - [What's new in 1.0.3](#whats-new-in-103)
@@ -38,6 +39,7 @@ This document is the full reference for the plugin: commands, permissions, every
 - [Permissions](#permissions)
 - [Configuration reference](#configuration-reference)
   - [File locations](#file-locations)
+  - [language](#language)
   - [defaults.enabled](#defaultsenabled)
   - [Global settings](#global-settings)
   - [block-damages](#block-damages)
@@ -83,10 +85,41 @@ Key design goals:
 | **Permission tiers** | Optional `permission:` on groups and damage sections (e.g. VIP lower durability / bigger chains). |
 | **Player choice** | Per-player toggle saved to disk; staff can check status online or offline. |
 | **Claim-aware** | Each block fires a break check; protected blocks are skipped, the rest still break. |
-| **Fair replant** | Optional auto-replant from real sapling drops; 0-cost connected leaves still break after a low-durability log budget. |
+| **Structure protection** | Skips tree-cap on player builds and world structures (houses, villages, log walls). |
+| **Languages** | Server default in `config.yml` / `/tc language server`; optional personal `/tc language` (not in `user`). Bundled: `EN-us`, `EN-gb`, `EN-sg`, `DE-de`, `ES-es`, `PT-br`. |
+| **Fair replant** | Optional auto-replant from real sapling drops; 0-cost leaves break with the tree only when every trunk in the chain is cut. |
 | **Update alerts** | Ops / `normaltreecapitator.admin` get a clickable download link when a newer release is published. |
 
 ---
+
+## What's new in 1.0.5
+
+Full notes: **[1.0.5.md](1.0.5.md)**
+
+| Feature | Summary |
+|---------|---------|
+| **Structure protection** | Tree cap only runs on natural-looking trees (grounded stump + real foliage/canopy); builds fall back to vanilla break. |
+| **Structure cleanup** | Orphan leaf-only / log-only leftovers can still be tree-capped (`structure-cleanup`). |
+| **Command UX** | `/tc` toggle state · `/tc <player>` staff lookup · `/tc status` live break progress · `/tc help` lists only what you can use. |
+| **`admin.state`** | Staff lookup permission renamed from `admin.status` → `normaltreecapitator.admin.state`. |
+| **User pack commands** | Each default-player command has its own permission node (also granted by `normaltreecapitator.user`). |
+| **`/tc version`** | Admin-only (`normaltreecapitator.version`, default op; included in `admin` pack). |
+| **Languages** | Chat strings in `languages/` (`EN-us`, `EN-gb`, `EN-sg`, `DE-de`, `ES-es`, `PT-br`); server default via `language:` / `/tc language server`; optional personal `/tc language` (not in `user`). |
+| **`/tc structure-protection`** | Per-player opt-out (`normaltreecapitator.structure-protection`, not in `user`). |
+| **30-minute Pastebin poll** | Re-checks the version feed; notifies console + staff when a new remote version appears. |
+| **Join + 3-hour reminders** | Ops / `normaltreecapitator.admin` get a fresh check on join; recurring reminder every 3 hours while outdated. |
+
+### Default user pack (`normaltreecapitator.user`)
+
+| Command / feature | Permission node | Default |
+|-------------------|-----------------|---------|
+| Tree cap when breaking | `normaltreecapitator.use` | `true` |
+| `/tc` (toggle state) | `normaltreecapitator.status` | `true` |
+| `/tc status` (break progress) | `normaltreecapitator.progress` | `true` |
+| `/tc help` | `normaltreecapitator.help` | `true` |
+| `/tc toggle` | `normaltreecapitator.toggle` | `true` |
+
+Grant `normaltreecapitator.user` for all of the above, or set individual nodes.
 
 ## What's new in 1.0.4
 
@@ -94,12 +127,8 @@ Full notes: **[1.0.4.md](1.0.4.md)**
 
 | Feature | Summary |
 |---------|---------|
-| **`/tc status`** | View your tree capitator toggle state (`normaltreecapitator.admin.status`). |
-| **`/tc status <player>`** | View any player's toggle state — **online or offline**. |
-| **`normaltreecapitator.user`** | One node for all basic player permissions (`use`, `toggle`, `help`). |
-| **`normaltreecapitator.admin.*`** | Admin commands split into `admin.status`, `admin.reload`, `admin.toggle.others`; parent `admin` grants all. |
-| **Group permissions** | Optional `permission: vip` on a group → `normaltreecapitator.group.vip` (gated groups preferred when the player has them). |
-| **Damage permissions** | Optional `permission: vip` on a damage section → `normaltreecapitator.damage.vip` (overrides open damage for the same blocks). |
+| **`normaltreecapitator.user` / `admin.*`** | Permission packs; optional group & damage `permission:` gates. |
+| **Group / damage permissions** | Optional `permission: vip` → `normaltreecapitator.group.vip` / `damage.vip`. |
 
 ## Upgrading to 1.0.4
 
@@ -109,12 +138,12 @@ Full notes: **[1.0.4.md](1.0.4.md)**
 | Old (1.0.3) | New (1.0.4) |
 |-------------|-------------|
 | `normaltreecapitator.reload` | `normaltreecapitator.admin.reload` |
-| `normaltreecapitator.status` | `normaltreecapitator.admin.status` |
+| `normaltreecapitator.status` (if used for others) | Self: `normaltreecapitator.status` · Others: `normaltreecapitator.admin.status` (renamed to `admin.state` in 1.0.5) |
 | `normaltreecapitator.toggle.others` | `normaltreecapitator.admin.toggle.others` |
 
 Or grant `normaltreecapitator.admin` / `normaltreecapitator.user` instead of listing children.
 
-3. Run `/tc reload` to merge new message keys into an existing `messages.yml`.
+3. Run `/tc reload` to merge new message keys into an existing language file under `languages/`.
 4. Update the [Pastebin version feed](https://pastebin.com/raw/nc6CbGem) to `v1.0.4|https://modrinth.com/plugin/normal-tree-capitator/versions` when you publish.
 
 ## What's new in 1.0.3
@@ -126,10 +155,10 @@ Full notes: **[1.0.3.md](1.0.3.md)**
 | **Tool-aware groups** | Group is chosen by block **and** held tool. Overlapping woods across tiers (stone vs iron) work as expected. |
 | **Config ownership** | Your `groups:` and `block-damages:` are never restored from the jar on `/tc reload`. |
 | **Custom damage sections** | Any named section under `block-damages` (`logs`, `mushrooms`, `heavy_logs`, …). |
-| **Low-durability replant** | With `break-tool: false`, connected 0-cost foliage still breaks after the log budget so leaf drops can feed replant; no free saplings are spawned. |
+| **Low-durability replant** | With `break-tool: false`, 0-cost foliage breaks only when the budget covers every trunk (no bare leftover logs); no free saplings are spawned. |
 | **`/normaltreecap` alias** | Same command as `/tc` / `/treecap` / `/treecapitator`. |
 | **`/tc version`** | Shows installed version; if outdated, shows a clickable download URL. |
-| **Pastebin update feed** | Staff notified on enable, join, and every 3 hours when behind. |
+| **Pastebin update feed** | Staff notified on enable, join, and periodically when behind (improved polling in **1.0.5**). |
 
 ---
 
@@ -147,10 +176,10 @@ Full notes: **[1.0.3.md](1.0.3.md)**
 
 ## Installation
 
-1. Download **1.0.4** from [Modrinth](https://modrinth.com/plugin/normal-tree-capitator/versions) (or [GitHub](https://github.com/agentsix1/NormalTreeCapitator), or [build from source](#building-from-source)).
-2. Place `NormalTreeCapitator-1.0.4.jar` in your server's `plugins/` folder.
+1. Download **1.0.5** from [Modrinth](https://modrinth.com/plugin/normal-tree-capitator/versions) (or [GitHub](https://github.com/agentsix1/NormalTreeCapitator), or [build from source](#building-from-source)).
+2. Place `NormalTreeCapitator-1.0.5.jar` in your server's `plugins/` folder.
 3. Start or restart the server.
-4. Edit `plugins/NormalTreeCapitator/config.yml` and `messages.yml` if needed.
+4. Edit `plugins/NormalTreeCapitator/config.yml` and `languages/<language>.yml` if needed.
 5. Run `/tc reload` to apply config/message changes without a restart.
 
 > **Note:** Code updates require a **server restart**. `/tc reload` only reloads YAML files.
@@ -160,7 +189,13 @@ On first run the plugin creates:
 ```
 plugins/NormalTreeCapitator/
 ├── config.yml
-├── messages.yml
+├── languages/
+│   ├── EN-us.yml
+│   ├── EN-gb.yml
+│   ├── EN-sg.yml
+│   ├── DE-de.yml
+│   ├── ES-es.yml
+│   └── PT-br.yml
 └── playerdata/
     └── <uuid>.yml
 ```
@@ -168,7 +203,7 @@ plugins/NormalTreeCapitator/
 On load you should see a line like:
 
 ```
-[TreeCap] config .../config.yml must-sneak=true debug=false async-start=100 replant=true
+[TreeCap] config .../config.yml language=EN-us must-sneak=true debug=false async-start=100 replant=true
 ```
 
 ---
@@ -185,9 +220,10 @@ On load you should see a line like:
 **For admins**
 
 1. Players get basics via `normaltreecapitator.user` (default: true). Staff get `normaltreecapitator.admin`.
-2. Adjust `must-sneak`, `replant`, groups, and damage (including optional VIP `permission:`) in `config.yml`.
-3. Run `/tc reload` after YAML edits (restart after jar updates).
-4. Use `/tc status <player>` to check toggle state for online or offline players.
+2. Adjust `must-sneak`, `replant`, `language`, groups, and damage (including optional VIP `permission:`) in `config.yml`.
+3. Optionally grant `normaltreecapitator.language` so players can `/tc language <code>` for themselves.
+4. Run `/tc reload` after YAML edits (restart after jar updates).
+5. Use `/tc <player>` to check toggle state for online or offline players.
 
 If `must-sneak: true` (shipped default), players must **hold sneak** while breaking to activate tree cap. See [Sneak behavior](#sneak-behavior) for the full matrix.
 
@@ -198,25 +234,33 @@ If `must-sneak: true` (shipped default), players must **hold sneak** while break
 Primary command: **`/tc`**  
 Aliases: `/treecapitator`, `/treecap`, `/normaltreecap`
 
-| Command | Permission | Description |
-|---------|------------|-------------|
-| `/tc help` | `normaltreecapitator.help` | List available subcommands |
-| `/tc version` | — | Show installed version; if outdated, show a clickable download link ([Pastebin version feed](https://pastebin.com/raw/nc6CbGem)) |
-| `/tc toggle` | `normaltreecapitator.toggle` | Toggle tree capitator for yourself |
-| `/tc toggle <player>` | `normaltreecapitator.admin.toggle.others` | Toggle for another online player |
-| `/tc status` | `normaltreecapitator.admin.status` | View your tree capitator toggle state |
-| `/tc status <player>` | `normaltreecapitator.admin.status` | View a player's toggle state — online or offline |
-| `/tc reload` | `normaltreecapitator.admin.reload` | Reload `config.yml` and `messages.yml` |
+| Command | Permission | Pack | Description |
+|---------|------------|------|-------------|
+| `/tc` | `normaltreecapitator.status` | `user` | View your tree capitator toggle state |
+| `/tc status` | `normaltreecapitator.progress` | `user` | Live progress of your current tree break (blocks done / total, %, rough ETA) |
+| `/tc help` | `normaltreecapitator.help` | `user` | List only the commands you have permission to use |
+| `/tc toggle` | `normaltreecapitator.toggle` | `user` | Toggle tree capitator for yourself |
+| `/tc <player>` | `normaltreecapitator.admin.state` | `admin` | View a player's toggle state — online or offline |
+| `/tc toggle <player>` | `normaltreecapitator.admin.toggle.others` | `admin` | Toggle for another online player |
+| `/tc reload` | `normaltreecapitator.admin.reload` | `admin` | Reload `config.yml` and all language files |
+| `/tc version` | `normaltreecapitator.version` | `admin` | Show installed version; if outdated, show a clickable download link |
+| `/tc language <code>` | `normaltreecapitator.language` | — | Set your personal chat language (not in `user`; saved in playerdata) |
+| `/tc language server <code>` | `normaltreecapitator.admin.language` | `admin` | Set the server default chat language (writes `language:` in `config.yml`) |
+| `/tc structure-protection` | `normaltreecapitator.structure-protection` | — | Toggle whether structure protection applies to you (not in `user`) |
 
 **Examples**
 
 ```
+/tc
+/tc Steve
+/tc status
 /tc help
+/tc language EN-us
+/tc language server DE-de
 /normaltreecap version
 /tc toggle
 /tc toggle Steve
-/tc status
-/tc status Steve
+/tc structure-protection
 /tc reload
 ```
 
@@ -224,12 +268,13 @@ Aliases: `/treecapitator`, `/treecap`, `/normaltreecap`
 
 The plugin reads the latest release from [Pastebin raw](https://pastebin.com/raw/nc6CbGem) (`version|download url`).
 
-| When | Who is notified |
-|------|-----------------|
-| Plugin enable | Console warning + online ops / `normaltreecapitator.admin` |
-| Player join | Ops and players with `normaltreecapitator.admin` |
-| `/tc version` | Whoever ran the command (current version + clickable link if outdated) |
-| Every 3 hours | Online ops / admin permission |
+| When | What happens |
+|------|----------------|
+| **Every 30 minutes** | Re-fetches Pastebin. If a newer version appears (or the feed changed), console + online ops / `normaltreecapitator.admin` are notified |
+| **Plugin enable** | Immediate Pastebin check; notify console + online staff if outdated |
+| **Player join** | Fresh Pastebin check for that player if they are op or have `normaltreecapitator.admin` |
+| **Every 3 hours** | Reminder to console + online staff while still outdated |
+| **`/tc version`** | Fresh check for whoever ran the command (staff/op by default; clickable link if outdated) |
 
 ---
 
@@ -239,19 +284,25 @@ The plugin reads the latest release from [Pastebin raw](https://pastebin.com/raw
 
 | Permission | Default | Includes |
 |------------|---------|----------|
-| `normaltreecapitator.*` | op | `user` + `admin` |
-| `normaltreecapitator.user` | `true` | `use`, `toggle`, `help` |
-| `normaltreecapitator.admin` | op | `admin.status`, `admin.reload`, `admin.toggle.others`, plus protected saplings & update alerts |
+| `normaltreecapitator.*` | op | `user` + `admin` + structure-protection + language |
+| `normaltreecapitator.user` | `true` | `use`, `toggle`, `status`, `progress`, `help` |
+| `normaltreecapitator.admin` | op | `admin.state`, `admin.reload`, `admin.language`, `admin.toggle.others`, `version`, plus protected saplings & update alerts |
 
 ### Individual nodes
 
 | Permission | Default | Description |
 |------------|---------|-------------|
 | `normaltreecapitator.use` | `true` | Activate tree capitator when breaking blocks |
-| `normaltreecapitator.toggle` | `true` | Use `/tc toggle` for yourself |
-| `normaltreecapitator.help` | `true` | View `/tc help` |
-| `normaltreecapitator.admin.status` | op | `/tc status` / `/tc status <player>` |
+| `normaltreecapitator.toggle` | `true` | `/tc toggle` |
+| `normaltreecapitator.status` | `true` | `/tc` — view your toggle state |
+| `normaltreecapitator.progress` | `true` | `/tc status` — live chain break progress |
+| `normaltreecapitator.help` | `true` | `/tc help` |
+| `normaltreecapitator.version` | op | `/tc version` |
+| `normaltreecapitator.structure-protection` | `false` | `/tc structure-protection` (not in `user`) |
+| `normaltreecapitator.language` | `false` | `/tc language <code>` personal language (not in `user`) |
+| `normaltreecapitator.admin.state` | op | `/tc <player>` toggle lookup |
 | `normaltreecapitator.admin.reload` | op | `/tc reload` |
+| `normaltreecapitator.admin.language` | op | `/tc language server <code>` |
 | `normaltreecapitator.admin.toggle.others` | op | `/tc toggle <player>` |
 | `normaltreecapitator.group.<name>` | — | From `groups.*.permission` (e.g. `vip` → `normaltreecapitator.group.vip`) |
 | `normaltreecapitator.damage.<name>` | — | From `block-damages.*.permission` (e.g. `vip` → `normaltreecapitator.damage.vip`) |
@@ -262,6 +313,7 @@ Config `permission: vip` becomes `normaltreecapitator.group.vip` or `normaltreec
 
 ```
 /lp group default permission set normaltreecapitator.user true
+/lp group default permission set normaltreecapitator.language true
 /lp group vip permission set normaltreecapitator.group.vip true
 /lp group vip permission set normaltreecapitator.damage.vip true
 /lp group staff permission set normaltreecapitator.admin true
@@ -290,11 +342,32 @@ Unknown block names on older Minecraft versions are **skipped with a console war
 
 | Path | Purpose |
 |------|---------|
-| `config.yml` | All gameplay settings, groups, block-damages |
-| `messages.yml` | Chat strings and colors |
-| `playerdata/<uuid>.yml` | Per-player enabled/disabled toggle |
+| `config.yml` | All gameplay settings, groups, block-damages, server language |
+| `languages/<code>.yml` | Chat strings and colors for that language |
+| `playerdata/<uuid>.yml` | Per-player toggle, structure-protection opt-out, personal language |
 
 Always edit files under `plugins/NormalTreeCapitator/`, not copies inside the JAR.
+
+---
+
+### language
+
+```yaml
+# Available languages: EN-us (English US), EN-gb (English UK), EN-sg (English Singapore),
+# DE-de (German), ES-es (Spanish), PT-br (Brazilian Portuguese)
+language: EN-us
+```
+
+| | |
+|--|--|
+| **Default** | `EN-us` |
+| **Meaning** | Server default language under `languages/` (players without a personal language use this) |
+| **Bundled** | `EN-us`, `EN-gb`, `EN-sg`, `DE-de`, `ES-es`, `PT-br` |
+| **Custom** | Add your own `languages/XX-yy.yml` and set `language` to that name (without `.yml`) |
+| **Players** | With `normaltreecapitator.language`, `/tc language <code>` saves a personal override in `playerdata/` |
+| **Staff** | `/tc language server <code>` (or `language:` in config) changes the server default |
+
+If the chosen file is missing, the plugin falls back to `EN-us` and logs a warning. An old root `messages.yml` is moved to `languages/EN-us.yml` once on upgrade if English was not extracted yet.
 
 ---
 
@@ -333,6 +406,8 @@ settings:
   async-start: 100
   blocks-per-tick: 100
   async-delay: 1
+  structure-protection: true
+  structure-cleanup: true
 ```
 
 These apply to **every group** unless a group overrides `max-chain` or `search-radius`.
@@ -586,6 +661,48 @@ Ticks to wait **between async waves** after the first wave.
 
 ---
 
+#### structure-protection
+
+| | |
+|---|---|
+| **Type** | Boolean |
+| **Default** | `true` |
+
+When enabled, tree capitator **only** runs if the chain looks like a natural tree. Otherwise the break stays vanilla (single block).
+
+| Check | Passes when |
+|-------|-------------|
+| Foliage | Leaves / wart / mushroom blocks present (skipped if `max-chain` capped) |
+| Natural leaves | Most overworld leaves are non-persistent (not player-placed) |
+| Grounded stump | A lowest trunk column sits on natural/plantable ground |
+| Canopy | Some foliage sits above the lowest trunk |
+
+Real trees next to houses still work — there is no adjacency block list. See **[1.0.5.md](1.0.5.md)**.
+
+#### structure-cleanup
+
+| | |
+|---|---|
+| **Type** | Boolean |
+| **Default** | `true` |
+
+Requires `structure-protection: true`. When a chain fails natural-tree checks, still allow tree-cap for:
+
+- **Leaf-only** connected foliage (leftover canopy)
+- **Log-only** stacks that only touch air, other logs in the chain, and the floor beneath them
+
+#### Player override
+
+| Command | Permission | Notes |
+|---------|------------|-------|
+| `/tc structure-protection` | `normaltreecapitator.structure-protection` | Toggle protection for yourself; disabled if server setting is off |
+
+Not in `normaltreecapitator.user`.
+
+Message: `structure-protected` in the active language file under `languages/`.
+
+---
+
 ### block-damages
 
 ```yaml
@@ -760,11 +877,14 @@ After editing, run `/tc reload`.
 
 ## Messages reference
 
-**File:** `plugins/NormalTreeCapitator/messages.yml`  
+**Folder:** `plugins/NormalTreeCapitator/languages/`  
+**Server default:** set by `language:` in `config.yml` (default `EN-us`) or `/tc language server <code>`  
+**Personal override:** `/tc language <code>` with `normaltreecapitator.language` (saved in playerdata; not in `user`)  
+**Bundled:** `EN-us.yml` (English US), `EN-gb.yml` (English UK), `EN-sg.yml` (English Singapore), `DE-de.yml` (German), `ES-es.yml` (Spanish), `PT-br.yml` (Brazilian Portuguese)  
 **Reload:** `/tc reload` (requires `normaltreecapitator.admin.reload`)  
 **Colors:** Standard `&` color codes (e.g. `&a` green, `&c` red)
 
-Every key is prefixed automatically with `prefix` when sent to players.
+Every key is prefixed automatically with `prefix` when sent to players. Missing keys fall back to the bundled English defaults. Chat to a player uses their personal language when set; otherwise the server default.
 
 | Key | Placeholders | When it is used |
 |-----|--------------|-----------------|
@@ -772,25 +892,42 @@ Every key is prefixed automatically with `prefix` when sent to players.
 | `usage` | `{label}`, `{usage}` | Invalid command syntax |
 | `unknown-subcommand` | `{label}` | Unrecognized subcommand |
 | `no-permission-toggle-others` | — | `/tc toggle <player>` without `admin.toggle.others` |
-| `no-permission-status` | — | `/tc status` without `admin.status` |
+| `no-permission-status` | — | `/tc` without `status` |
+| `no-permission-progress` | — | `/tc status` without `progress` |
+| `no-permission-status-others` | — | `/tc <player>` without `admin.state` |
 | `player-not-found` | `{player}` | Target not found (online or offline) |
 | `toggle-self` | `{feature}`, `{state}` | Player toggles themselves |
 | `toggle-other-sender` | `{feature}`, `{state}`, `{target}` | Staff toggles another player (sender view) |
 | `toggle-other-target` | `{feature}`, `{state}`, `{sender}` | Staff toggles another player (target view) |
-| `status-self` | `{feature}`, `{state}` | `/tc status` for yourself |
-| `status-other` | `{feature}`, `{state}`, `{target}`, `{presence}` | `/tc status <player>` |
+| `status-self` | `{feature}`, `{state}` | `/tc` for yourself |
+| `status-other` | `{feature}`, `{state}`, `{target}`, `{presence}` | `/tc <player>` |
+| `chain-status` | `{done}`, `{total}`, `{percent}`, `{remaining}`, `{eta}`, `{mode}` | `/tc status` during a break |
+| `chain-status-idle` | — | `/tc status` with no active chain |
 | `presence-online` / `presence-offline` | — | Inserted into `{presence}` |
 | `only-players` | — | Console uses a self-only command without a player arg |
 | `no-permission` | — | Missing toggle permission |
 | `no-permission-reload` | — | Missing `admin.reload` |
 | `reload-success` | — | After `/tc reload` |
+| `help-language` | `{label}` | Help line for personal language |
+| `help-language-server` | `{label}` | Help line for server language |
+| `language-current` | `{language}`, `{languages}` | `/tc language` with no code |
+| `language-set` | `{language}` | After a successful personal language change |
+| `language-server-current` | `{language}`, `{languages}` | `/tc language server` with no code |
+| `language-server-set` | `{language}` | After a successful server language change |
+| `language-invalid` | `{language}`, `{languages}` | Unknown language code |
+| `language-save-failed` | — | Failed to write server `language:` to config |
 | `help-header` | `{label}` | `/tc help` header line |
 | `help-toggle` | `{label}`, `{feature}` | Help line for toggle |
 | `help-toggle-player` | `{label}` | Help line for toggle others |
-| `help-status` / `help-status-player` | `{label}` | Help lines for status |
+| `help-self` / `help-player` / `help-status` | `{label}` | Help lines for `/tc`, `/tc <player>`, `/tc status` |
 | `help-reload` | `{label}` | Help line for reload |
 | `help-version` | `{label}` | Help line for version |
 | `sapling-protected` | — | Breaking invincible replant without `admin` |
+| `structure-protected` | — | Tree cap blocked by structure protection |
+| `command-disabled-structure-protection` | — | `/tc structure-protection` while server setting is off |
+| `structure-protection-self` | `{feature}`, `{state}` | Player toggles structure protection |
+| `help-structure-protection` | `{label}` | Help line for structure-protection |
+| `feature-structure-protection` | — | Display name in toggle message |
 | `feature-treecapitator` | — | Display name in toggle messages |
 | `feature-tree-capitator` | — | Lowercase feature name in help text |
 | `state-enabled` | — | Text shown when feature is on |
@@ -816,15 +953,19 @@ toggle-self: "&7{feature} is now {state}&7."
 
 ```yaml
 enabled: true
+structure-protection: true
+language: EN-us   # optional; omit or null = use server default from config.yml
 ```
 
-| State | Meaning |
-|-------|---------|
-| File missing | Uses `defaults.enabled` from `config.yml` |
+| Key | Meaning |
+|-----|---------|
+| File missing | Uses `defaults.enabled` from `config.yml`; structure protection on; no personal language |
 | `enabled: true` | Tree cap allowed (still needs permission + other checks) |
 | `enabled: false` | Player turned it off with `/tc toggle` |
+| `structure-protection` | Whether server structure protection applies to this player |
+| `language` | Personal chat language code (e.g. `DE-de`); missing = server default |
 
-Data is saved when a player toggles. Deleting a player's file resets them to the default on next join.
+Data is saved when a player toggles tree cap, structure protection, or personal language. Deleting a player's file resets them to defaults on next join.
 
 ---
 
@@ -844,6 +985,7 @@ When a player breaks a block, the plugin runs these checks **in order**:
 8. Not on **cooldown** (`cooldown-ticks`).
 9. **Tool** is usable (axe durability / `break-tool` when `need-tool` is true).
 10. Flood fill finds at least one block after **durability budget** trim (per-player damage rules apply).
+11. **Structure protection** passes (chain looks like a natural tree) when `structure-protection` is true.
 
 If all pass, the original break is cancelled and the chain runs.
 
@@ -898,7 +1040,7 @@ Species does **not** affect connectivity — only whether blocks share the same 
 - Applied **per block** as it breaks (not all upfront).
 - Cost per block from [block-damages](#block-damages) (default 1 for logs, 0 for leaves).
 - **Unbreaking** enchantment rolled per damage point.
-- If `break-tool: false`, costly blocks (logs) are capped so the axe keeps 1 durability; connected **0-cost** foliage matching those logs is still broken afterward so saplings can drop for replant (no free saplings are spawned).
+- If `break-tool: false`, costly blocks (logs) are capped so the axe keeps 1 durability. Connected **0-cost** foliage matching those logs is broken only when **every trunk** in the chain fits the budget — a partial cut leaves the canopy on the remaining logs (no free saplings are spawned).
 
 ---
 
@@ -912,7 +1054,7 @@ When `replant: true`:
 4. **One tick later** — saplings planted at each stump on that block's region thread.
 5. **Consumption** — if `replant-consume-saplings: true`, one matching sapling removed from **real** tree drops per plant. No sapling in drops → that stump is skipped.
 
-With `break-tool: false`, connected foliage that costs **0** durability is still broken after the log budget runs out (matching the cut tree families), so leaves can drop saplings for replant. Foliage that costs durability is not broken past the budget. No connected leaves → no leaf drops → no replant for those stumps when consume-saplings is on.
+With `break-tool: false`, connected foliage that costs **0** durability breaks only when the durability budget covers **every trunk** in the chain (matching tree families), so a short axe never strips leaves off leftover logs. Foliage that costs durability is not broken past the budget. Partial trunk cuts leave the canopy; finish the trunks (or repair the axe) to take leaves and feed replant.
 
 Supported replant types include overworld saplings, mangrove propagules, crimson/warped fungus, and pale oak where the server version supports it.
 
@@ -972,12 +1114,12 @@ mvn clean package
 **Output:**
 
 ```
-target/NormalTreeCapitator-1.0.4.jar
+target/NormalTreeCapitator-1.0.5.jar
 ```
 
 The JAR is shaded (bStats relocated). No extra libraries needed at runtime.
 
-The built plugin version string appears in `/plugins` as e.g. `1.0.4 Build 3` (build number auto-increments each package).
+The built plugin version string appears in `/plugins` as e.g. `1.0.5 Build 3` (build number auto-increments each package).
 
 ---
 
@@ -1008,7 +1150,7 @@ The built plugin version string appears in `/plugins` as e.g. `1.0.4 Build 3` (b
 ### Replant not working
 
 - **`replant: false`** in config.
-- **`replant-consume-saplings: true`** but no saplings in drops — need connected 0-cost leaves broken so saplings can drop; foliage that costs durability will not be broken past the axe budget.
+- **`replant-consume-saplings: true`** but no saplings in drops — need the full trunk budget so 0-cost leaves break and drop saplings; a partial durability cut leaves the canopy on remaining logs.
 - Ground under stump not valid (mid-tree logs don't replant).
 - Enable **`debug: true`** and search for `REPLANT` / `no-sapling-in-drops` lines.
 
@@ -1035,6 +1177,7 @@ The built plugin version string appears in `/plugins` as e.g. `1.0.4 Build 3` (b
 |--------------|---------|
 | `evaluate sneaking=` | Sneak state at break time |
 | `blocked: must-sneak` | Sneak gate failed |
+| `blocked: structure-protection` | Chain looks like a build/structure — vanilla break only |
 | `blocked: on cooldown` | Wait for cooldown |
 | `skip: tool durability budget exhausted` | Axe can't afford full chain |
 | `START ... mode=async/sync` | Chain accepted |
@@ -1053,7 +1196,8 @@ This plugin includes [bStats](https://bstats.org/) for **anonymous** usage stati
 
 | Version | Notes |
 |---------|--------|
-| **1.0.4** (current) | `/tc status`, `user` / `admin.*` packs, optional group & damage `permission:` gates — see **[1.0.4.md](1.0.4.md)** |
+| **1.0.5** (current) | Natural-tree structure protection; 30-minute Pastebin poll, join checks, 3-hour reminders — see **[1.0.5.md](1.0.5.md)** |
+| **1.0.4** | `/tc status`, `user` / `admin.*` packs, optional group & damage `permission:` gates — see **[1.0.4.md](1.0.4.md)** |
 | **1.0.3** | Tool-aware groups, config ownership, durability/replant leaf handling, `/normaltreecap version`, Pastebin updates — see **[1.0.3.md](1.0.3.md)** |
 | **1.0.2** | Prior stable release |
 

@@ -22,6 +22,7 @@ public final class TreeCapitatorConfig {
     private final NormalTreeCapitator plugin;
     private final File configFile;
 
+    private String language = "EN-us";
     private boolean defaultEnabled = true;
     private int maxChain = 100;
     private int searchRadius = 1;
@@ -38,6 +39,8 @@ public final class TreeCapitatorConfig {
     private int asyncStart = 150;
     private int blocksPerTick = 100;
     private int asyncDelay = 1;
+    private boolean structureProtection = true;
+    private boolean structureCleanup = true;
 
     private List<TreeBlockGroup> groups = List.of();
     private List<BlockDamageRule> damageRules = List.of();
@@ -71,6 +74,11 @@ public final class TreeCapitatorConfig {
             plugin.getLogger().log(Level.WARNING, "Could not merge default config.yml", e);
         }
 
+        String configuredLanguage = yaml.getString("language", language);
+        if (configuredLanguage != null && !configuredLanguage.isBlank()) {
+            language = configuredLanguage.trim();
+        }
+
         ConfigurationSection playerDefaults = yaml.getConfigurationSection("defaults");
         if (playerDefaults != null) {
             defaultEnabled = playerDefaults.getBoolean("enabled", true);
@@ -93,6 +101,8 @@ public final class TreeCapitatorConfig {
             asyncStart = Math.max(1, settings.getInt("async-start", asyncStart));
             blocksPerTick = Math.max(1, settings.getInt("blocks-per-tick", blocksPerTick));
             asyncDelay = Math.max(0, settings.getInt("async-delay", asyncDelay));
+            structureProtection = settings.getBoolean("structure-protection", structureProtection);
+            structureCleanup = settings.getBoolean("structure-cleanup", structureCleanup);
         }
 
         // Only entries written in the player's config.yml (never jar defaults).
@@ -108,10 +118,35 @@ public final class TreeCapitatorConfig {
         }
 
         plugin.getLogger().info("[TreeCap] config " + configFile.getAbsolutePath()
+                + " language=" + language
                 + " must-sneak=" + mustSneak
                 + " debug=" + debug
                 + " async-start=" + asyncStart
-                + " replant=" + replant);
+                + " replant=" + replant
+                + " structure-protection=" + structureProtection
+                + " structure-cleanup=" + structureCleanup);
+    }
+
+    public String language() {
+        return language;
+    }
+
+    /**
+     * Writes {@code language:} to {@code config.yml} and updates the in-memory value.
+     *
+     * @return {@code true} if the file was saved
+     */
+    public boolean setLanguage(String languageCode) {
+        this.language = languageCode;
+        FileConfiguration yaml = YamlConfiguration.loadConfiguration(configFile);
+        yaml.set("language", languageCode);
+        try {
+            yaml.save(configFile);
+            return true;
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.WARNING, "Could not save language to config.yml", e);
+            return false;
+        }
     }
 
     private List<BlockDamageRule> parseBlockDamages(ConfigurationSection section) {
@@ -353,6 +388,14 @@ public final class TreeCapitatorConfig {
 
     public int asyncDelay() {
         return asyncDelay;
+    }
+
+    public boolean structureProtection() {
+        return structureProtection;
+    }
+
+    public boolean structureCleanup() {
+        return structureCleanup;
     }
 
     /**

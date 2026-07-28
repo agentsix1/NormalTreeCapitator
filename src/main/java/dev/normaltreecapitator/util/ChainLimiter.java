@@ -14,9 +14,9 @@ import java.util.Set;
  * Caps a break chain so the tool is not destroyed when {@code break-tool} is false.
  * <p>
  * Costly blocks (logs) are taken while durability allows. Connected foliage that
- * costs {@code 0} durability is still included afterward — even when the axe has
- * no remaining budget for more logs — so leaf drops can supply saplings for replant.
- * Foliage that costs durability is never taken past the budget.
+ * costs {@code 0} durability is included only when every trunk in the chain is
+ * being broken — so a partial durability cut never strips the canopy and leaves
+ * bare logs standing. Foliage that costs durability is never taken past the budget.
  */
 public final class ChainLimiter {
 
@@ -44,6 +44,15 @@ public final class ChainLimiter {
         int spent = 0;
         List<BlockPosition> costly = new ArrayList<>(targets.size());
         Set<String> logFamilies = new HashSet<>();
+        Set<BlockPosition> brokenTrunks = new HashSet<>();
+        List<BlockPosition> allTrunks = new ArrayList<>();
+
+        for (BlockPosition pos : targets) {
+            Material type = AdjacentFlooder.safeType(pos.world(), pos.x(), pos.y(), pos.z());
+            if (type != null && AdjacentFlooder.isTrunkMaterial(type)) {
+                allTrunks.add(pos);
+            }
+        }
 
         for (BlockPosition pos : targets) {
             Material type = AdjacentFlooder.safeType(pos.world(), pos.x(), pos.y(), pos.z());
@@ -57,11 +66,22 @@ public final class ChainLimiter {
             spent += cost;
             costly.add(pos);
             if (type != null && AdjacentFlooder.isTrunkMaterial(type)) {
+                brokenTrunks.add(pos);
                 String family = TreeReplant.treeFamily(type);
                 if (!family.isEmpty()) {
                     logFamilies.add(family);
                 }
             }
+        }
+
+        if (costly.isEmpty()) {
+            return List.of();
+        }
+
+        // Partial trunk cut: keep foliage so the remaining tree still has a canopy.
+        boolean allTrunksBroken = !allTrunks.isEmpty() && brokenTrunks.containsAll(allTrunks);
+        if (!allTrunksBroken) {
+            return List.copyOf(costly);
         }
 
         List<BlockPosition> free = new ArrayList<>(targets.size());
@@ -77,14 +97,8 @@ public final class ChainLimiter {
             free.add(pos);
         }
 
-        if (costly.isEmpty() && free.isEmpty()) {
-            return List.of();
-        }
         if (free.isEmpty()) {
             return List.copyOf(costly);
-        }
-        if (costly.isEmpty()) {
-            return List.of();
         }
         List<BlockPosition> allowed = new ArrayList<>(costly.size() + free.size());
         allowed.addAll(costly);
