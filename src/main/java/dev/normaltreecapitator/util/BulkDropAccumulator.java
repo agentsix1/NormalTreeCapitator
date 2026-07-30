@@ -27,6 +27,15 @@ public final class BulkDropAccumulator {
                 .toList();
     }
 
+    /** Returns a snapshot of merged drops and clears the accumulator (for cancel flush). */
+    public synchronized List<ItemStack> takeMergedDrops() {
+        List<ItemStack> out = drops.stream()
+                .map(ItemStack::clone)
+                .toList();
+        drops.clear();
+        return out;
+    }
+
     public synchronized boolean tryConsumeSapling(Material sapling) {
         for (int i = 0; i < drops.size(); i++) {
             ItemStack stack = drops.get(i);

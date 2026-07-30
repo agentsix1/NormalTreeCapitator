@@ -23,7 +23,7 @@ import java.util.UUID;
 public final class TreeCapitatorCommand implements TabExecutor {
 
     private static final Set<String> SUBCOMMANDS = Set.of(
-            "help", "version", "toggle", "status", "reload", "language"
+            "help", "version", "toggle", "status", "reload", "language", "cancel", "stop"
     );
 
     private final NormalTreeCapitator plugin;
@@ -38,6 +38,9 @@ public final class TreeCapitatorCommand implements TabExecutor {
             return handleSelfToggleState(sender, label);
         }
         if (handleHelp(sender, label, args)) {
+            return true;
+        }
+        if (handleCancel(sender, args)) {
             return true;
         }
         if (handleVersion(sender, args)) {
@@ -77,6 +80,10 @@ public final class TreeCapitatorCommand implements TabExecutor {
             }
             if (sender.hasPermission("normaltreecapitator.progress")) {
                 suggest(out, args[0], "status");
+            }
+            if (sender.hasPermission("normaltreecapitator.cancel")) {
+                suggest(out, args[0], "cancel");
+                suggest(out, args[0], "stop");
             }
             if (sender.hasPermission("normaltreecapitator.admin.reload")) {
                 suggest(out, args[0], "reload");
@@ -359,6 +366,30 @@ public final class TreeCapitatorCommand implements TabExecutor {
         return true;
     }
 
+    private boolean handleCancel(CommandSender sender, String[] args) {
+        if (args.length == 0) {
+            return false;
+        }
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        if (!sub.equals("cancel") && !sub.equals("stop")) {
+            return false;
+        }
+        if (!(sender instanceof Player player)) {
+            plugin.messages().send(sender, "only-players");
+            return true;
+        }
+        if (!sender.hasPermission("normaltreecapitator.cancel")) {
+            plugin.messages().send(sender, "no-permission");
+            return true;
+        }
+        if (plugin.activeTreeCaps().requestCancel(player.getUniqueId(), plugin)) {
+            plugin.messages().send(sender, "chain-cancelled");
+        } else {
+            plugin.messages().send(sender, "chain-cancel-idle");
+        }
+        return true;
+    }
+
     private boolean handleVersion(CommandSender sender, String[] args) {
         if (args.length == 0 || !args[0].equalsIgnoreCase("version")) {
             return false;
@@ -388,6 +419,9 @@ public final class TreeCapitatorCommand implements TabExecutor {
         }
         if (sender.hasPermission("normaltreecapitator.progress")) {
             plugin.messages().send(sender, "help-status", PluginMessages.map("label", label));
+        }
+        if (sender.hasPermission("normaltreecapitator.cancel")) {
+            plugin.messages().send(sender, "help-cancel", PluginMessages.map("label", label));
         }
         if (sender.hasPermission("normaltreecapitator.version")) {
             plugin.messages().send(sender, "help-version", PluginMessages.map("label", label));

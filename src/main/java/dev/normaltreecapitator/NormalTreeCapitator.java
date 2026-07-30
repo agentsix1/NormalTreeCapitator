@@ -8,6 +8,7 @@ import dev.normaltreecapitator.playerdata.PlayerDataStore;
 import dev.normaltreecapitator.scheduler.PluginScheduler;
 import dev.normaltreecapitator.session.BreakSession;
 import dev.normaltreecapitator.session.ChainProgressTracker;
+import dev.normaltreecapitator.session.ActiveTreeCapJobs;
 import dev.normaltreecapitator.update.UpdateNotifier;
 import dev.normaltreecapitator.util.ServerPlatform;
 import org.bstats.bukkit.Metrics;
@@ -24,6 +25,7 @@ public final class NormalTreeCapitator extends JavaPlugin {
     private TreeCapitatorConfig config;
     private BreakSession sessions;
     private ChainProgressTracker chainProgress;
+    private ActiveTreeCapJobs activeTreeCaps;
     private UpdateNotifier updateNotifier;
 
     @Override
@@ -41,6 +43,7 @@ public final class NormalTreeCapitator extends JavaPlugin {
 
         sessions = new BreakSession();
         chainProgress = new ChainProgressTracker();
+        activeTreeCaps = new ActiveTreeCapJobs();
 
         getServer().getPluginManager().registerEvents(new TreeCapitatorListener(this), this);
         registerCommand("tc", new TreeCapitatorCommand(this));
@@ -110,6 +113,10 @@ public final class NormalTreeCapitator extends JavaPlugin {
 
     public ChainProgressTracker chainProgress() {
         return chainProgress;
+    }
+
+    public ActiveTreeCapJobs activeTreeCaps() {
+        return activeTreeCaps;
     }
 
     public UpdateNotifier updateNotifier() {

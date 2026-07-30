@@ -3,6 +3,7 @@ package dev.normaltreecapitator.util;
 import dev.normaltreecapitator.NormalTreeCapitator;
 import dev.normaltreecapitator.config.TreeBlockGroup;
 import dev.normaltreecapitator.config.TreeCapitatorConfig;
+import dev.normaltreecapitator.session.ActiveTreeCapJobs;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -60,6 +61,9 @@ public final class BulkBreakExecutor {
 
             AtomicBoolean toolBroken = new AtomicBoolean(false);
             BulkDropAccumulator accumulator = new BulkDropAccumulator();
+            ActiveTreeCapJobs.Job job = plugin.activeTreeCaps().begin(
+                    player.getUniqueId(), accumulator, dropAt, config
+            );
             List<PendingReplant> brokenLogs = Collections.synchronizedList(new ArrayList<>());
             AtomicInteger pending = new AtomicInteger(targets.size());
             AtomicInteger breakSeq = new AtomicInteger();
@@ -77,7 +81,8 @@ public final class BulkBreakExecutor {
                     pending,
                     toolBroken,
                     breakSeq,
-                    targets
+                    targets,
+                    job
             );
         });
     }
@@ -95,19 +100,21 @@ public final class BulkBreakExecutor {
             AtomicInteger pending,
             AtomicBoolean toolBroken,
             AtomicInteger breakSeq,
-            List<BlockPosition> chain
+            List<BlockPosition> chain,
+            ActiveTreeCapJobs.Job job
     ) {
         if (startIndex >= positions.size()) {
             return;
         }
-        if (toolBroken.get() || !player.isOnline()) {
+        if (shouldStop(job, toolBroken, player)) {
             int unscheduled = positions.size() - startIndex;
             TreeCapLog.info(config, plugin, player,
                     "async wave abort startIndex=" + startIndex
                             + " unscheduled=" + unscheduled
+                            + " cancelled=" + job.isCancelled()
                             + " toolBroken=" + toolBroken.get());
             if (unscheduled > 0 && pending.addAndGet(-unscheduled) == 0) {
-                finish(player, dropAt, accumulator, brokenLogs, group, config);
+                finish(player, dropAt, accumulator, brokenLogs, group, config, job);
             }
             return;
         }
@@ -116,10 +123,10 @@ public final class BulkBreakExecutor {
         int total = positions.size();
 
         Runnable wave = () -> {
-            if (toolBroken.get() || !player.isOnline()) {
+            if (shouldStop(job, toolBroken, player)) {
                 int unscheduled = positions.size() - startIndex;
                 if (unscheduled > 0 && pending.addAndGet(-unscheduled) == 0) {
-                    finish(player, dropAt, accumulator, brokenLogs, group, config);
+                    finish(player, dropAt, accumulator, brokenLogs, group, config, job);
                 }
                 return;
             }
@@ -129,7 +136,7 @@ public final class BulkBreakExecutor {
                 Location location = position.toLocation();
                 plugin.getScheduler().runAtLocation(location, () -> {
                     try {
-                        if (!toolBroken.get() && player.isOnline()) {
+                        if (!shouldStop(job, toolBroken, player)) {
                             tryBreakBlock(
                                     player,
                                     tool,
@@ -141,12 +148,13 @@ public final class BulkBreakExecutor {
                                     breakSeq,
                                     total,
                                     chain,
-                                    toolBroken
+                                    toolBroken,
+                                    job
                             );
                         }
                     } finally {
                         if (pending.decrementAndGet() == 0) {
-                            finish(player, dropAt, accumulator, brokenLogs, group, config);
+                            finish(player, dropAt, accumulator, brokenLogs, group, config, job);
                         }
                     }
                 });
@@ -166,7 +174,8 @@ public final class BulkBreakExecutor {
                         pending,
                         toolBroken,
                         breakSeq,
-                        chain
+                        chain,
+                        job
                 );
             }
         };
@@ -178,15 +187,27 @@ public final class BulkBreakExecutor {
         }
     }
 
+    private static boolean shouldStop(ActiveTreeCapJobs.Job job, AtomicBoolean toolBroken, Player player) {
+        return job.isCancelled() || toolBroken.get() || !player.isOnline();
+    }
+
     private void finish(
             Player player,
             Location dropAt,
             BulkDropAccumulator accumulator,
             List<PendingReplant> brokenLogs,
             TreeBlockGroup group,
-            TreeCapitatorConfig config
+            TreeCapitatorConfig config,
+            ActiveTreeCapJobs.Job job
     ) {
+        if (job.isCancelled()) {
+            TreeCapLog.info(config, plugin, player, "BREAK CHAIN CANCELLED (async finish)");
+            job.completeAfterCancel(plugin);
+            return;
+        }
+
         plugin.chainProgress().finish(player.getUniqueId());
+        plugin.activeTreeCaps().end(job);
         List<PendingReplant> stumps = config.replant()
                 ? TreeReplant.stumpsFromBrokenLogs(brokenLogs)
                 : List.of();
@@ -195,7 +216,7 @@ public final class BulkBreakExecutor {
                         + " " + TreeCapLog.replantSitesSummary(stumps)
                         + " " + TreeCapLog.saplingSummary(accumulator));
         Runnable spawnDrops = () -> plugin.getScheduler().runAtLocation(dropAt, () -> {
-            if (config.mergeItemDrops()) {
+            if (config.mergeItemDrops() && !job.dropsAlreadyReleased()) {
                 TreeCapLog.info(config, plugin, player,
                         "SPAWN DROPS " + TreeCapLog.formatDrops(accumulator.mergedDrops())
                                 + " " + TreeCapLog.saplingSummary(accumulator));
@@ -244,8 +265,12 @@ public final class BulkBreakExecutor {
             AtomicInteger breakSeq,
             int total,
             List<BlockPosition> chain,
-            AtomicBoolean toolBroken
+            AtomicBoolean toolBroken,
+            ActiveTreeCapJobs.Job job
     ) {
+        if (job.isCancelled()) {
+            return;
+        }
         Material targetType = target.getType();
         Location blockLoc = target.getLocation();
         int n = breakSeq.incrementAndGet();
@@ -268,6 +293,9 @@ public final class BulkBreakExecutor {
             return;
         }
         try {
+            if (job.isCancelled()) {
+                return;
+            }
             BreakProtection.BreakApproval approval = BreakProtection.checkBreak(player, target);
             if (approval == null) {
                 TreeCapLog.info(config, plugin, player,

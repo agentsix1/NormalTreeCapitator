@@ -69,12 +69,13 @@ Large trees show a short **“Processing tree breaks…”** message while the c
 | Command | Who needs permission |
 |---------|---------------------|
 | `/tc toggle` | Everyone (default) |
+| `/tc cancel` / `/tc stop` | Everyone (default) — abort mid-break |
 | `/tc toggle <player>` | Staff |
 | `/tc reload` | Staff |
 
 **Main permissions**
 
-- `normaltreecapitator.user` — basic pack (use, toggle, help)
+- `normaltreecapitator.user` — basic pack (use, toggle, status, progress, cancel, help)
 - `normaltreecapitator.admin` — admin pack (status, reload, toggle others, …)
 - `normaltreecapitator.admin.reload` — reload configs
 - Optional `normaltreecapitator.group.*` / `.damage.*` from config

@@ -22,13 +22,14 @@ permissions:
       normaltreecapitator.language: true
 
   normaltreecapitator.user:
-    description: All basic player permissions (use, toggle, status, progress, help).
+    description: All basic player permissions (use, toggle, status, progress, cancel, help).
     default: true
     children:
       normaltreecapitator.use: true
       normaltreecapitator.toggle: true
       normaltreecapitator.status: true
       normaltreecapitator.progress: true
+      normaltreecapitator.cancel: true
       normaltreecapitator.help: true
 
   normaltreecapitator.admin:
@@ -52,6 +53,9 @@ permissions:
     default: true
   normaltreecapitator.progress:
     description: View live chain break progress (/tc status)
+    default: true
+  normaltreecapitator.cancel:
+    description: Stop an in-progress tree break (/tc cancel or /tc stop)
     default: true
   normaltreecapitator.help:
     description: View /tc help for commands you can use

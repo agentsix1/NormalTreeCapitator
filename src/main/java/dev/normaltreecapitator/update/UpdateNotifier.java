@@ -18,11 +18,11 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Polls the Pastebin version feed and notifies ops / {@code normaltreecapitator.admin}:
+ * Polls the GitHub {@code version.txt} feed and notifies ops / {@code normaltreecapitator.admin}:
  * <ul>
  *   <li>on plugin enable</li>
  *   <li>when a permitted player joins</li>
- *   <li>when a 30-minute Pastebin check finds a new (or changed) remote version</li>
+ *   <li>when a 30-minute check finds a new (or changed) remote version</li>
  *   <li>every 3 hours as a reminder while still outdated</li>
  * </ul>
  */
@@ -32,14 +32,14 @@ public final class UpdateNotifier implements Listener {
     private static final long THREE_HOURS_TICKS = 20L * 60L * 60L * 3L;
 
     private final NormalTreeCapitator plugin;
-    private final PastebinVersionFetcher fetcher;
+    private final GithubVersionFetcher fetcher;
     private final AtomicReference<RemoteVersionInfo> latest = new AtomicReference<>();
     /** Last remote version string we already announced to staff (avoids 30-min spam). */
     private final AtomicReference<String> lastAnnouncedRemoteVersion = new AtomicReference<>();
 
     public UpdateNotifier(NormalTreeCapitator plugin) {
         this.plugin = plugin;
-        this.fetcher = new PastebinVersionFetcher(plugin);
+        this.fetcher = new GithubVersionFetcher(plugin);
     }
 
     public void start() {
@@ -90,8 +90,8 @@ public final class UpdateNotifier implements Listener {
     }
 
     /**
-     * Every 30 minutes: re-fetch Pastebin. If the feed shows a newer version than local
-     * and that remote version (or URL) changed since last announce, notify staff + console.
+     * Every 30 minutes: re-fetch GitHub {@code version.txt}. If the feed shows a newer version
+     * than local and that remote version (or URL) changed since last announce, notify staff + console.
      */
     private void onThirtyMinutePoll() {
         plugin.getScheduler().runAsync(() -> {
@@ -124,7 +124,7 @@ public final class UpdateNotifier implements Listener {
         Optional<RemoteVersionInfo> remote = fetcher.fetchLatestRelease();
         remote.ifPresent(latest::set);
         if (remote.isEmpty()) {
-            plugin.getLogger().fine("Pastebin version check skipped or unavailable.");
+            plugin.getLogger().fine("GitHub version check skipped or unavailable.");
         }
     }
 

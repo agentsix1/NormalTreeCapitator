@@ -17,16 +17,17 @@ This document is the full reference for the plugin: commands, permissions, every
 |--------|------|
 | **Modrinth** (recommended) | [modrinth.com/plugin/normal-tree-capitator](https://modrinth.com/plugin/normal-tree-capitator/versions) |
 | **GitHub** | [github.com/agentsix1/NormalTreeCapitator](https://github.com/agentsix1/NormalTreeCapitator) |
-| **Version feed** | [Pastebin raw](https://pastebin.com/raw/nc6CbGem) (`version\|download url` — used by in-game update checks) |
-| **Changelog** | [1.0.5.md](1.0.5.md) · [1.0.4.md](1.0.4.md) · [1.0.3.md](1.0.3.md) |
+| **Version feed** | [version.txt](https://raw.githubusercontent.com/agentsix1/NormalTreeCapitator/main/version.txt) (`version\|download url` — used by in-game update checks) |
+| **Changelog** | [1.0.6.md](1.0.6.md) · [1.0.5.md](1.0.5.md) · [1.0.4.md](1.0.4.md) · [1.0.3.md](1.0.3.md) |
 
-**Current release: [1.0.5](1.0.5.md)** — live `/tc status`, languages (`EN-us` / `EN-gb` / `EN-sg` / `DE-de` / `ES-es` / `PT-br`), smarter Pastebin update polling.
+**Current release: [1.0.6](1.0.6.md)** — `/tc cancel` / `/tc stop`, plus 1.0.5 languages and update polling.
 
 ---
 
 ## Table of contents
 
 - [Overview](#overview)
+- [What's new in 1.0.6](#whats-new-in-106)
 - [What's new in 1.0.5](#whats-new-in-105)
 - [What's new in 1.0.4](#whats-new-in-104)
 - [Upgrading to 1.0.4](#upgrading-to-104)
@@ -91,6 +92,15 @@ Key design goals:
 
 ---
 
+## What's new in 1.0.6
+
+Full notes: **[1.0.6.md](1.0.6.md)**
+
+| Feature | Summary |
+|---------|---------|
+| **`/tc cancel` / `/tc stop`** | Abort the current tree break, flush collected merged drops, stop further axe damage. |
+| **`normaltreecapitator.cancel`** | Default `true`; included in `normaltreecapitator.user`. |
+
 ## What's new in 1.0.5
 
 Full notes: **[1.0.5.md](1.0.5.md)**
@@ -102,7 +112,7 @@ Full notes: **[1.0.5.md](1.0.5.md)**
 | **User pack commands** | Each default-player command has its own permission node (also granted by `normaltreecapitator.user`). |
 | **`/tc version`** | Admin-only (`normaltreecapitator.version`, default op; included in `admin` pack). |
 | **Languages** | Chat strings in `languages/` (`EN-us`, `EN-gb`, `EN-sg`, `DE-de`, `ES-es`, `PT-br`); server default via `language:` / `/tc language server`; optional personal `/tc language` (not in `user`). |
-| **30-minute Pastebin poll** | Re-checks the version feed; notifies console + staff when a new remote version appears. |
+| **30-minute version poll** | Re-checks GitHub `version.txt`; notifies console + staff when a new remote version appears. |
 | **Join + 3-hour reminders** | Ops / `normaltreecapitator.admin` get a fresh check on join; recurring reminder every 3 hours while outdated. |
 
 ### Default user pack (`normaltreecapitator.user`)
@@ -112,6 +122,7 @@ Full notes: **[1.0.5.md](1.0.5.md)**
 | Tree cap when breaking | `normaltreecapitator.use` | `true` |
 | `/tc` (toggle state) | `normaltreecapitator.status` | `true` |
 | `/tc status` (break progress) | `normaltreecapitator.progress` | `true` |
+| `/tc cancel` / `/tc stop` | `normaltreecapitator.cancel` | `true` |
 | `/tc help` | `normaltreecapitator.help` | `true` |
 | `/tc toggle` | `normaltreecapitator.toggle` | `true` |
 
@@ -154,7 +165,7 @@ Full notes: **[1.0.3.md](1.0.3.md)**
 | **Low-durability replant** | With `break-tool: false`, 0-cost foliage breaks only when the budget covers every trunk (no bare leftover logs); no free saplings are spawned. |
 | **`/normaltreecap` alias** | Same command as `/tc` / `/treecap` / `/treecapitator`. |
 | **`/tc version`** | Shows installed version; if outdated, shows a clickable download URL. |
-| **Pastebin update feed** | Staff notified on enable, join, and periodically when behind (improved polling in **1.0.5**). |
+| **Pastebin update feed** (1.0.3) | Later moved to GitHub `version.txt` in **1.0.5**. |
 
 ---
 
@@ -172,8 +183,8 @@ Full notes: **[1.0.3.md](1.0.3.md)**
 
 ## Installation
 
-1. Download **1.0.5** from [Modrinth](https://modrinth.com/plugin/normal-tree-capitator/versions) (or [GitHub](https://github.com/agentsix1/NormalTreeCapitator), or [build from source](#building-from-source)).
-2. Place `NormalTreeCapitator-1.0.5.jar` in your server's `plugins/` folder.
+1. Download **1.0.6** from [Modrinth](https://modrinth.com/plugin/normal-tree-capitator/versions) (or [GitHub](https://github.com/agentsix1/NormalTreeCapitator), or [build from source](#building-from-source)).
+2. Place `NormalTreeCapitator-1.0.6.jar` in your server's `plugins/` folder.
 3. Start or restart the server.
 4. Edit `plugins/NormalTreeCapitator/config.yml` and `languages/<language>.yml` if needed.
 5. Run `/tc reload` to apply config/message changes without a restart.
@@ -234,6 +245,7 @@ Aliases: `/treecapitator`, `/treecap`, `/normaltreecap`
 |---------|------------|------|-------------|
 | `/tc` | `normaltreecapitator.status` | `user` | View your tree capitator toggle state |
 | `/tc status` | `normaltreecapitator.progress` | `user` | Live progress of your current tree break (blocks done / total, %, rough ETA) |
+| `/tc cancel` / `/tc stop` | `normaltreecapitator.cancel` | `user` | Stop the current break, drop collected loot now, no further axe damage |
 | `/tc help` | `normaltreecapitator.help` | `user` | List only the commands you have permission to use |
 | `/tc toggle` | `normaltreecapitator.toggle` | `user` | Toggle tree capitator for yourself |
 | `/tc <player>` | `normaltreecapitator.admin.state` | `admin` | View a player's toggle state — online or offline |
@@ -249,6 +261,7 @@ Aliases: `/treecapitator`, `/treecap`, `/normaltreecap`
 /tc
 /tc Steve
 /tc status
+/tc cancel
 /tc help
 /tc language EN-us
 /tc language server DE-de
@@ -260,13 +273,13 @@ Aliases: `/treecapitator`, `/treecap`, `/normaltreecap`
 
 ### Update checks
 
-The plugin reads the latest release from [Pastebin raw](https://pastebin.com/raw/nc6CbGem) (`version|download url`).
+The plugin reads the latest release from [GitHub version.txt](https://raw.githubusercontent.com/agentsix1/NormalTreeCapitator/main/version.txt) (`version|download url`).
 
 | When | What happens |
 |------|----------------|
-| **Every 30 minutes** | Re-fetches Pastebin. If a newer version appears (or the feed changed), console + online ops / `normaltreecapitator.admin` are notified |
-| **Plugin enable** | Immediate Pastebin check; notify console + online staff if outdated |
-| **Player join** | Fresh Pastebin check for that player if they are op or have `normaltreecapitator.admin` |
+| **Every 30 minutes** | Re-fetches `version.txt`. If a newer version appears (or the feed changed), console + online ops / `normaltreecapitator.admin` are notified |
+| **Plugin enable** | Immediate check; notify console + online staff if outdated |
+| **Player join** | Fresh check for that player if they are op or have `normaltreecapitator.admin` |
 | **Every 3 hours** | Reminder to console + online staff while still outdated |
 | **`/tc version`** | Fresh check for whoever ran the command (staff/op by default; clickable link if outdated) |
 
@@ -279,7 +292,7 @@ The plugin reads the latest release from [Pastebin raw](https://pastebin.com/raw
 | Permission | Default | Includes |
 |------------|---------|----------|
 | `normaltreecapitator.*` | op | `user` + `admin` + language |
-| `normaltreecapitator.user` | `true` | `use`, `toggle`, `status`, `progress`, `help` |
+| `normaltreecapitator.user` | `true` | `use`, `toggle`, `status`, `progress`, `cancel`, `help` |
 | `normaltreecapitator.admin` | op | `admin.state`, `admin.reload`, `admin.language`, `admin.toggle.others`, `version`, plus protected saplings & update alerts |
 
 ### Individual nodes
@@ -290,6 +303,7 @@ The plugin reads the latest release from [Pastebin raw](https://pastebin.com/raw
 | `normaltreecapitator.toggle` | `true` | `/tc toggle` |
 | `normaltreecapitator.status` | `true` | `/tc` — view your toggle state |
 | `normaltreecapitator.progress` | `true` | `/tc status` — live chain break progress |
+| `normaltreecapitator.cancel` | `true` | `/tc cancel` / `/tc stop` — abort break + flush drops |
 | `normaltreecapitator.help` | `true` | `/tc help` |
 | `normaltreecapitator.version` | op | `/tc version` |
 | `normaltreecapitator.language` | `false` | `/tc language <code>` personal language (not in `user`) |
@@ -855,6 +869,8 @@ Every key is prefixed automatically with `prefix` when sent to players. Missing 
 | `status-other` | `{feature}`, `{state}`, `{target}`, `{presence}` | `/tc <player>` |
 | `chain-status` | `{done}`, `{total}`, `{percent}`, `{remaining}`, `{eta}`, `{mode}` | `/tc status` during a break |
 | `chain-status-idle` | — | `/tc status` with no active chain |
+| `chain-cancelled` | — | After a successful `/tc cancel` / `/tc stop` |
+| `chain-cancel-idle` | — | `/tc cancel` with nothing in progress |
 | `presence-online` / `presence-offline` | — | Inserted into `{presence}` |
 | `only-players` | — | Console uses a self-only command without a player arg |
 | `no-permission` | — | Missing toggle permission |
@@ -871,7 +887,7 @@ Every key is prefixed automatically with `prefix` when sent to players. Missing 
 | `help-header` | `{label}` | `/tc help` header line |
 | `help-toggle` | `{label}`, `{feature}` | Help line for toggle |
 | `help-toggle-player` | `{label}` | Help line for toggle others |
-| `help-self` / `help-player` / `help-status` | `{label}` | Help lines for `/tc`, `/tc <player>`, `/tc status` |
+| `help-self` / `help-player` / `help-status` / `help-cancel` | `{label}` | Help lines for `/tc`, `/tc <player>`, `/tc status`, `/tc cancel` |
 | `help-reload` | `{label}` | Help line for reload |
 | `help-version` | `{label}` | Help line for version |
 | `sapling-protected` | — | Breaking invincible replant without `admin` |
@@ -1058,12 +1074,12 @@ mvn clean package
 **Output:**
 
 ```
-target/NormalTreeCapitator-1.0.5.jar
+target/NormalTreeCapitator-1.0.6.jar
 ```
 
 The JAR is shaded (bStats relocated). No extra libraries needed at runtime.
 
-The built plugin version string appears in `/plugins` as e.g. `1.0.5 Build 3` (build number auto-increments each package).
+The built plugin version string appears in `/plugins` as e.g. `1.0.6 Build 3` (build number auto-increments each package).
 
 ---
 
@@ -1139,7 +1155,8 @@ This plugin includes [bStats](https://bstats.org/) for **anonymous** usage stati
 
 | Version | Notes |
 |---------|--------|
-| **1.0.5** (current) | Live `/tc status`, languages, smarter Pastebin update polling — see **[1.0.5.md](1.0.5.md)** |
+| **1.0.6** (current) | `/tc cancel` / `/tc stop` — abort break, flush drops, no further axe damage — see **[1.0.6.md](1.0.6.md)** |
+| **1.0.5** | Live `/tc status`, languages, GitHub `version.txt` update polling — see **[1.0.5.md](1.0.5.md)** |
 | **1.0.4** | `/tc status`, `user` / `admin.*` packs, optional group & damage `permission:` gates — see **[1.0.4.md](1.0.4.md)** |
 | **1.0.3** | Tool-aware groups, config ownership, durability/replant leaf handling, `/normaltreecap version`, Pastebin updates — see **[1.0.3.md](1.0.3.md)** |
 | **1.0.2** | Prior stable release |
@@ -1152,7 +1169,7 @@ This plugin includes [bStats](https://bstats.org/) for **anonymous** usage stati
 |--|--|
 | **Download (Modrinth)** | https://modrinth.com/plugin/normal-tree-capitator/versions |
 | **GitHub** | https://github.com/agentsix1/NormalTreeCapitator |
-| **Version feed** | https://pastebin.com/raw/nc6CbGem |
+| **Version feed** | https://raw.githubusercontent.com/agentsix1/NormalTreeCapitator/main/version.txt |
 | **Discord** | https://discord.normalsurvival.com |
 | **Issues** | https://github.com/agentsix1/NormalTreeCapitator/issues |
 

@@ -28,7 +28,7 @@ Works on **Paper, Folia, Spigot, and Bukkit.** Easy for players. Plenty for admi
 - **Languages** — bundled `EN-us`, `EN-gb`, `EN-sg`, `DE-de`, `ES-es`, `PT-br` (or drop in your own file). Non-English wording isn’t all native-speaker perfect — edit freely if something sounds weird.
 - **You’re in control** — `/tc toggle` if you’re not feeling it; staff can peek with `/tc <player>`; `/tc status` shows progress while a giant is falling
 
-> Full nerdy docs: **[GitHub README](https://github.com/agentsix1/NormalTreeCapitator)** · What’s new: **[1.0.5](https://github.com/agentsix1/NormalTreeCapitator/blob/main/1.0.5.md)**
+> Full nerdy docs: **[GitHub README](https://github.com/agentsix1/NormalTreeCapitator)** · What’s new: **[1.0.6](https://github.com/agentsix1/NormalTreeCapitator/blob/main/1.0.6.md)**
 
 ---
 
@@ -63,6 +63,7 @@ Done. Go hit a tree.
 | `/tc` | Check if tree cap is on for you |
 | `/tc toggle` | Flip it on/off for yourself |
 | `/tc status` | See how far a big break has gotten (+ rough wait time) |
+| `/tc cancel` / `/tc stop` | Bail mid-break — loot already collected drops now; axe stops taking hits |
 | `/tc help` | Commands you actually have access to |
 | `/tc language <code>` | Set your own chat language *(only if the server grants it)* |
 
@@ -85,6 +86,7 @@ Each one has its own permission. Give the whole pack, or pick and choose.
 | Actually tree-capping | `normaltreecapitator.use` | `true` |
 | `/tc` | `normaltreecapitator.status` | `true` |
 | `/tc status` | `normaltreecapitator.progress` | `true` |
+| `/tc cancel` / `/tc stop` | `normaltreecapitator.cancel` | `true` |
 | `/tc help` | `normaltreecapitator.help` | `true` |
 | `/tc toggle` | `normaltreecapitator.toggle` | `true` |
 
@@ -123,6 +125,11 @@ Each one has its own permission. Give the whole pack, or pick and choose.
 | `debug` | Loud `[TreeCap]` console logs when something’s weird |
 
 ---
+
+## What’s new in 1.0.6
+
+- `/tc cancel` / `/tc stop` — stop a mid-tree break, dump collected drops, no more axe damage
+- Permission `normaltreecapitator.cancel` (in the default `user` pack)
 
 ## What’s new in 1.0.5
 

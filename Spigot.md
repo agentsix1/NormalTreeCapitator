@@ -25,7 +25,7 @@ Works on [B]Paper, Folia, Spigot, and Bukkit.[/B] Easy for players. Plenty for a
 [*][B]You’re in control[/B] — [I]/tc toggle[/I] if you’re not feeling it; staff can peek with [I]/tc <player>[/I]; [I]/tc status[/I] shows progress while a giant is falling
 [/LIST]
 
-[QUOTE]Full nerdy docs: [URL='https://github.com/agentsix1/NormalTreeCapitator'][B]GitHub README[/B][/URL] · What’s new: [URL='https://github.com/agentsix1/NormalTreeCapitator/blob/main/1.0.5.md']1.0.5[/URL][/QUOTE]
+[QUOTE]Full nerdy docs: [URL='https://github.com/agentsix1/NormalTreeCapitator'][B]GitHub README[/B][/URL] · What’s new: [URL='https://github.com/agentsix1/NormalTreeCapitator/blob/main/1.0.6.md']1.0.6[/URL][/QUOTE]
 
 [SIZE=5][B]Works with[/B][/SIZE]
 [TABLE]
@@ -80,6 +80,10 @@ Done. Go hit a tree.
 [TD]See how far a big break has gotten (+ rough wait time)[/TD]
 [/TR]
 [TR]
+[TD][I]/tc cancel[/I] / [I]/tc stop[/I][/TD]
+[TD]Bail mid-break — loot already collected drops now; axe stops taking hits[/TD]
+[/TR]
+[TR]
 [TD][I]/tc help[/I][/TD]
 [TD]Commands you actually have access to[/TD]
 [/TR]
@@ -118,6 +122,11 @@ Each one has its own permission. Give the whole pack, or pick and choose.
 [TR]
 [TD][I]/tc status[/I][/TD]
 [TD][I]normaltreecapitator.progress[/I][/TD]
+[TD][I]true[/I][/TD]
+[/TR]
+[TR]
+[TD][I]/tc cancel[/I] / [I]/tc stop[/I][/TD]
+[TD][I]normaltreecapitator.cancel[/I][/TD]
 [TD][I]true[/I][/TD]
 [/TR]
 [TR]
@@ -230,6 +239,12 @@ Each one has its own permission. Give the whole pack, or pick and choose.
 [TD]Loud [I][TreeCap][/I] console logs when something’s weird[/TD]
 [/TR]
 [/TABLE]
+
+[SIZE=5][B]What’s new in 1.0.6[/B][/SIZE]
+[LIST]
+[*][I]/tc cancel[/I] / [I]/tc stop[/I] — stop a mid-tree break, dump collected drops, no more axe damage
+[*]Permission [I]normaltreecapitator.cancel[/I] (in the default [I]user[/I] pack)
+[/LIST]
 
 [SIZE=5][B]What’s new in 1.0.5[/B][/SIZE]
 [LIST]

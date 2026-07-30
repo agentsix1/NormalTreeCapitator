@@ -16,6 +16,7 @@ import dev.normaltreecapitator.util.ToolHelper;
 import dev.normaltreecapitator.util.TreeCapLog;
 import dev.normaltreecapitator.util.TreeCapSneak;
 import dev.normaltreecapitator.util.TreeReplant;
+import dev.normaltreecapitator.session.ActiveTreeCapJobs;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -223,6 +224,9 @@ public final class TreeCapitatorListener implements Listener {
                         + " origin=" + TreeCapLog.blockLabel(origin, origin.getBlock().getType()));
         Location dropAt = origin.clone().add(0.5, 0.5, 0.5);
         BulkDropAccumulator accumulator = new BulkDropAccumulator();
+        ActiveTreeCapJobs.Job job = plugin.activeTreeCaps().begin(
+                player.getUniqueId(), accumulator, dropAt, config
+        );
         List<PendingReplant> brokenLogs = Collections.synchronizedList(new ArrayList<>());
         AtomicInteger pending = new AtomicInteger(targets.size());
         AtomicInteger breakSeq = new AtomicInteger();
@@ -232,31 +236,33 @@ public final class TreeCapitatorListener implements Listener {
         for (BlockPosition pos : targets) {
             Location loc = pos.toLocation();
             plugin.getScheduler().runOnEntity(player, () -> {
-                if (toolBroken.get() || !player.isOnline()) {
+                if (job.isCancelled() || toolBroken.get() || !player.isOnline()) {
                     TreeCapLog.info(config, plugin, player,
                             "break task aborted online=" + player.isOnline()
+                                    + " cancelled=" + job.isCancelled()
                                     + " toolBroken=" + toolBroken.get()
                                     + " at " + TreeCapLog.blockLabel(loc, loc.getBlock().getType()));
                     if (pending.decrementAndGet() == 0) {
-                        finishSyncTreeCap(dropAt, accumulator, brokenLogs, config, player);
+                        finishSyncTreeCap(dropAt, accumulator, brokenLogs, config, player, job);
                     }
                     return;
                 }
                 plugin.getScheduler().runAtLocation(loc, () -> {
                     try {
-                        if (!toolBroken.get() && player.isOnline()) {
+                        if (!job.isCancelled() && !toolBroken.get() && player.isOnline()) {
                             breakTreeBlockForDeferredReplant(
                                     player, tool, group, config, loc, accumulator, brokenLogs,
-                                    breakSeq, total, targets, toolBroken
+                                    breakSeq, total, targets, toolBroken, job
                             );
                         } else {
                             TreeCapLog.info(config, plugin, player,
-                                    "break skipped toolBroken=" + toolBroken.get()
+                                    "break skipped cancelled=" + job.isCancelled()
+                                            + " toolBroken=" + toolBroken.get()
                                             + " at " + TreeCapLog.blockLabel(loc, loc.getBlock().getType()));
                         }
                     } finally {
                         if (pending.decrementAndGet() == 0) {
-                            finishSyncTreeCap(dropAt, accumulator, brokenLogs, config, player);
+                            finishSyncTreeCap(dropAt, accumulator, brokenLogs, config, player, job);
                         }
                     }
                 });
@@ -275,8 +281,12 @@ public final class TreeCapitatorListener implements Listener {
             AtomicInteger breakSeq,
             int total,
             List<BlockPosition> chain,
-            AtomicBoolean toolBroken
+            AtomicBoolean toolBroken,
+            ActiveTreeCapJobs.Job job
     ) {
+        if (job.isCancelled()) {
+            return;
+        }
         Block target = loc.getBlock();
         Material targetType = target.getType();
         int n = breakSeq.incrementAndGet();
@@ -300,6 +310,9 @@ public final class TreeCapitatorListener implements Listener {
             return;
         }
         try {
+            if (job.isCancelled()) {
+                return;
+            }
             BreakProtection.BreakApproval approval = BreakProtection.checkBreak(player, target);
             if (approval == null) {
                 TreeCapLog.info(config, plugin, player,
@@ -367,9 +380,17 @@ public final class TreeCapitatorListener implements Listener {
             BulkDropAccumulator accumulator,
             List<PendingReplant> brokenLogs,
             TreeCapitatorConfig config,
-            Player player
+            Player player,
+            ActiveTreeCapJobs.Job job
     ) {
+        if (job.isCancelled()) {
+            TreeCapLog.info(config, plugin, player, "BREAK CHAIN CANCELLED (sync finish)");
+            job.completeAfterCancel(plugin);
+            return;
+        }
+
         plugin.chainProgress().finish(player.getUniqueId());
+        plugin.activeTreeCaps().end(job);
         List<PendingReplant> stumps = config.replant()
                 ? TreeReplant.stumpsFromBrokenLogs(brokenLogs)
                 : List.of();
@@ -378,7 +399,7 @@ public final class TreeCapitatorListener implements Listener {
                         + " " + TreeCapLog.replantSitesSummary(stumps)
                         + " " + TreeCapLog.saplingSummary(accumulator));
         Runnable spawnDrops = () -> plugin.getScheduler().runAtLocation(dropAt, () -> {
-            if (config.mergeItemDrops()) {
+            if (config.mergeItemDrops() && !job.dropsAlreadyReleased()) {
                 TreeCapLog.info(config, plugin, player,
                         "SPAWN DROPS " + TreeCapLog.formatDrops(accumulator.mergedDrops())
                                 + " " + TreeCapLog.saplingSummary(accumulator));

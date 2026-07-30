@@ -12,19 +12,20 @@ import java.util.Optional;
 import java.util.logging.Level;
 
 /**
- * Reads the latest plugin version from a Pastebin raw paste.
+ * Reads the latest plugin version from the GitHub {@code version.txt} raw file.
  * <p>
  * Expected layout (one line): {@code version|download url}
- * Example: {@code v1.0.3|https://modrinth.com/plugin/normal-tree-capitator/versions}
+ * Example: {@code v1.0.6|https://modrinth.com/plugin/normal-tree-capitator/versions}
  */
-final class PastebinVersionFetcher {
+final class GithubVersionFetcher {
 
-    static final String RAW_URL = "https://pastebin.com/raw/nc6CbGem";
+    static final String RAW_URL =
+            "https://raw.githubusercontent.com/agentsix1/NormalTreeCapitator/main/version.txt";
 
     private final NormalTreeCapitator plugin;
     private final HttpClient client;
 
-    PastebinVersionFetcher(NormalTreeCapitator plugin) {
+    GithubVersionFetcher(NormalTreeCapitator plugin) {
         this.plugin = plugin;
         this.client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
@@ -45,7 +46,7 @@ final class PastebinVersionFetcher {
             if (response.statusCode() != 200) {
                 plugin.getLogger().log(
                         Level.FINE,
-                        "Pastebin version check returned HTTP {0} for {1}",
+                        "GitHub version check returned HTTP {0} for {1}",
                         new Object[]{response.statusCode(), RAW_URL}
                 );
                 return Optional.empty();
@@ -56,7 +57,7 @@ final class PastebinVersionFetcher {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
-            plugin.getLogger().log(Level.FINE, "Could not fetch latest version from Pastebin", e);
+            plugin.getLogger().log(Level.FINE, "Could not fetch latest version from GitHub", e);
             return Optional.empty();
         }
     }
